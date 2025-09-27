@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Threading;
 
 namespace IntervalToast
@@ -38,6 +40,9 @@ namespace IntervalToast
         private DispatcherTimer? _autoCloseTimer;
         private readonly NotificationConfiguration _config;
         private bool _isClosing;
+        private bool _isAnimating;
+        private Storyboard? _progressStoryboard;
+        private bool _isHovered;
 
         /// <summary>
         /// Gets or sets the notification title
@@ -71,6 +76,16 @@ namespace IntervalToast
         /// </summary>
         public event EventHandler? NotificationClosed;
 
+        /// <summary>
+        /// Event raised when entry animation completes
+        /// </summary>
+        public event EventHandler? EntryAnimationCompleted;
+
+        /// <summary>
+        /// Event raised when exit animation completes
+        /// </summary>
+        public event EventHandler? ExitAnimationCompleted;
+
         #endregion
 
         #region Constructor
@@ -94,6 +109,12 @@ namespace IntervalToast
 
             // Configure window behavior
             ConfigureWindowBehavior();
+
+            // Apply animation preset
+            _config.ApplyAnimationPreset(_config.AnimationPreset);
+
+            // Setup progress indicator
+            SetupProgressIndicator();
         }
 
         #endregion
@@ -131,6 +152,15 @@ namespace IntervalToast
 
             // Apply opacity
             NotificationBorder.Opacity = _config.Opacity;
+
+            // Apply visual effects
+            ApplyVisualEffects();
+
+            // Configure close button visibility
+            CloseButton.Visibility = _config.ShowCloseButton ? Visibility.Visible : Visibility.Collapsed;
+
+            // Configure timestamp visibility
+            TimestampTextBlock.Visibility = _config.ShowTimestamp ? Visibility.Visible : Visibility.Collapsed;
         }
 
         #endregion
@@ -166,6 +196,9 @@ namespace IntervalToast
 
             Left = position.X;
             Top = position.Y;
+
+            // Start entry animation
+            StartEntryAnimation();
         }
 
         /// <summary>
@@ -236,28 +269,43 @@ namespace IntervalToast
         }
 
         /// <summary>
-        /// Handles mouse enter event to pause auto-close
+        /// Handles mouse enter event to pause auto-close and trigger hover effects
         /// </summary>
         protected override void OnMouseEnter(System.Windows.Input.MouseEventArgs e)
         {
             base.OnMouseEnter(e);
 
+            _isHovered = true;
+
             // Pause auto-close timer when mouse is over the notification
-            _autoCloseTimer?.Stop();
+            if (_config.PauseOnHover)
+            {
+                _autoCloseTimer?.Stop();
+                _progressStoryboard?.Pause();
+            }
+
+            // Trigger hover animation
+            AnimationEngine.AnimateHover(this, _config, true);
         }
 
         /// <summary>
-        /// Handles mouse leave event to resume auto-close
+        /// Handles mouse leave event to resume auto-close and end hover effects
         /// </summary>
         protected override void OnMouseLeave(System.Windows.Input.MouseEventArgs e)
         {
             base.OnMouseLeave(e);
 
+            _isHovered = false;
+
             // Resume auto-close timer when mouse leaves the notification
-            if (_config.AutoCloseDelay > TimeSpan.Zero && !_isClosing)
+            if (_config.AutoCloseDelay > TimeSpan.Zero && !_isClosing && _config.PauseOnHover)
             {
                 _autoCloseTimer?.Start();
+                _progressStoryboard?.Resume();
             }
+
+            // Trigger hover animation end
+            AnimationEngine.AnimateHover(this, _config, false);
         }
 
         #endregion
@@ -279,7 +327,19 @@ namespace IntervalToast
         }
 
         /// <summary>
-        /// Closes the notification window properly
+        /// Updates the position of this notification window with animation
+        /// </summary>
+        /// <param name="newPosition">The new position to animate to</param>
+        /// <param name="onCompleted">Optional callback when animation completes</param>
+        public void AnimateToPosition(System.Windows.Point newPosition, EventHandler? onCompleted = null)
+        {
+            if (_isClosing) return;
+
+            AnimationEngine.AnimateReposition(this, newPosition, _config, onCompleted);
+        }
+
+        /// <summary>
+        /// Closes the notification window properly with exit animation
         /// </summary>
         public void CloseNotification()
         {
@@ -287,12 +347,250 @@ namespace IntervalToast
 
             _isClosing = true;
             StopAutoCloseTimer();
+            StopProgressAnimation();
 
-            // Raise the closed event
-            NotificationClosed?.Invoke(this, EventArgs.Empty);
+            // Start exit animation
+            AnimationEngine.AnimateExit(this, _config, (sender, e) =>
+            {
+                // Raise the exit animation completed event
+                ExitAnimationCompleted?.Invoke(this, EventArgs.Empty);
 
-            // Close the window
-            Close();
+                // Raise the closed event
+                NotificationClosed?.Invoke(this, EventArgs.Empty);
+
+                // Close the window
+                Close();
+            });
+        }
+
+        #endregion
+
+        #region Animation Methods
+
+        /// <summary>
+        /// Starts the entry animation for the notification
+        /// </summary>
+        private void StartEntryAnimation()
+        {
+            if (_isAnimating) return;
+
+            _isAnimating = true;
+
+            AnimationEngine.AnimateEntry(this, _config, (sender, e) =>
+            {
+                _isAnimating = false;
+                EntryAnimationCompleted?.Invoke(this, EventArgs.Empty);
+
+                // Start progress animation after entry completes
+                if (_config.ShowProgressIndicator && _config.AutoCloseDelay > TimeSpan.Zero)
+                {
+                    StartProgressAnimation();
+                }
+            });
+        }
+
+        /// <summary>
+        /// Applies visual effects based on configuration
+        /// </summary>
+        private void ApplyVisualEffects()
+        {
+            try
+            {
+                if (!_config.EnableVisualEffects) return;
+
+                // Apply blur effect if configured
+                if (_config.BlurRadius > 0)
+                {
+                    try
+                    {
+                        var blurEffect = (BlurEffect)FindResource("NotificationBlur");
+                        if (blurEffect != null)
+                        {
+                            blurEffect.Radius = _config.BlurRadius;
+                            NotificationBorder.Effect = blurEffect;
+                        }
+                    }
+                    catch
+                    {
+                        // Create a new blur effect if resource not found
+                        var blurEffect = new BlurEffect
+                        {
+                            Radius = _config.BlurRadius
+                        };
+                        NotificationBorder.Effect = blurEffect;
+                    }
+                }
+
+                // Apply glow effect if configured
+                if (_config.GlowIntensity > 0)
+                {
+                    try
+                    {
+                        var glowEffect = (DropShadowEffect)FindResource("NotificationGlow");
+                        if (glowEffect != null)
+                        {
+                            glowEffect.Opacity = _config.GlowIntensity;
+
+                            // Combine with existing shadow if both are enabled
+                            if (_config.BlurRadius <= 0)
+                            {
+                                NotificationBorder.Effect = glowEffect;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Create a new glow effect if resource not found
+                        var glowEffect = new DropShadowEffect
+                        {
+                            Color = System.Windows.Media.Color.FromRgb(74, 144, 226),
+                            Opacity = _config.GlowIntensity,
+                            BlurRadius = 20,
+                            ShadowDepth = 0
+                        };
+
+                        if (_config.BlurRadius <= 0)
+                        {
+                            NotificationBorder.Effect = glowEffect;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't crash
+                System.Diagnostics.Debug.WriteLine($"ApplyVisualEffects error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Sets up the progress indicator based on configuration
+        /// </summary>
+        private void SetupProgressIndicator()
+        {
+            if (!_config.ShowProgressIndicator) return;
+
+            // Hide all progress indicators first
+            BottomProgressBar.Visibility = Visibility.Collapsed;
+            TopProgressBar.Visibility = Visibility.Collapsed;
+            LeftProgressBorder.Visibility = Visibility.Collapsed;
+            RightProgressBorder.Visibility = Visibility.Collapsed;
+            CircularProgressCorner.Visibility = Visibility.Collapsed;
+            CircularProgressCenter.Visibility = Visibility.Collapsed;
+
+            // Show the appropriate progress indicator
+            switch (_config.ProgressStyle)
+            {
+                case ProgressIndicatorStyle.BottomBar:
+                    BottomProgressBar.Visibility = Visibility.Visible;
+                    break;
+                case ProgressIndicatorStyle.TopBar:
+                    TopProgressBar.Visibility = Visibility.Visible;
+                    break;
+                case ProgressIndicatorStyle.LeftBorder:
+                    LeftProgressBorder.Visibility = Visibility.Visible;
+                    break;
+                case ProgressIndicatorStyle.RightBorder:
+                    RightProgressBorder.Visibility = Visibility.Visible;
+                    break;
+                case ProgressIndicatorStyle.CircularCorner:
+                    CircularProgressCorner.Visibility = Visibility.Visible;
+                    break;
+                case ProgressIndicatorStyle.CircularCenter:
+                    CircularProgressCenter.Visibility = Visibility.Visible;
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Starts the progress animation for auto-dismiss countdown
+        /// </summary>
+        private void StartProgressAnimation()
+        {
+            try
+            {
+                if (_config.AutoCloseDelay <= TimeSpan.Zero || !_config.ShowProgressIndicator) return;
+
+                var progressElement = GetProgressElement();
+                if (progressElement == null) return;
+
+                _progressStoryboard = AnimationEngine.CreateProgressAnimation(
+                    progressElement,
+                    _config.AutoCloseDelay,
+                    _config.ProgressStyle,
+                    (sender, e) =>
+                    {
+                        try
+                        {
+                            // Progress completed - auto-close the notification
+                            if (!_isClosing && !_isHovered)
+                            {
+                                CloseNotification();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Progress completion error: {ex.Message}");
+                        }
+                    });
+
+                if (_progressStoryboard != null)
+                {
+                    _progressStoryboard.Begin();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't crash
+                System.Diagnostics.Debug.WriteLine($"StartProgressAnimation error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Stops the progress animation
+        /// </summary>
+        private void StopProgressAnimation()
+        {
+            try
+            {
+                if (_progressStoryboard != null)
+                {
+                    _progressStoryboard.Stop();
+                    _progressStoryboard = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't crash
+                System.Diagnostics.Debug.WriteLine($"StopProgressAnimation error: {ex.Message}");
+                _progressStoryboard = null;
+            }
+        }
+
+        /// <summary>
+        /// Gets the appropriate progress element based on the configured style
+        /// </summary>
+        private FrameworkElement? GetProgressElement()
+        {
+            try
+            {
+                return _config.ProgressStyle switch
+                {
+                    ProgressIndicatorStyle.BottomBar => BottomProgressBar,
+                    ProgressIndicatorStyle.TopBar => TopProgressBar,
+                    ProgressIndicatorStyle.LeftBorder => LeftProgressBorder,
+                    ProgressIndicatorStyle.RightBorder => RightProgressBorder,
+                    ProgressIndicatorStyle.CircularCorner => CircularProgressCorner,
+                    ProgressIndicatorStyle.CircularCenter => CircularProgressCenter,
+                    _ => null
+                };
+            }
+            catch (Exception ex)
+            {
+                // Log the error and return null
+                System.Diagnostics.Debug.WriteLine($"GetProgressElement error: {ex.Message}");
+                return null;
+            }
         }
 
         #endregion
@@ -305,6 +603,7 @@ namespace IntervalToast
         protected override void OnClosed(EventArgs e)
         {
             StopAutoCloseTimer();
+            StopProgressAnimation();
             base.OnClosed(e);
         }
 
