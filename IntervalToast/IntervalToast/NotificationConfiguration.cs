@@ -113,19 +113,79 @@ namespace IntervalToast
         #region Animation Settings
 
         /// <summary>
-        /// Gets or sets the animation duration for show/hide effects
+        /// Gets or sets the animation preset for quick configuration
         /// </summary>
-        public TimeSpan AnimationDuration { get; set; } = TimeSpan.FromMilliseconds(300);
+        public AnimationPreset AnimationPreset { get; set; } = AnimationPreset.Normal;
 
         /// <summary>
-        /// Gets or sets whether to enable slide-in animation
+        /// Gets or sets the animation duration for show/hide effects
         /// </summary>
-        public bool EnableSlideAnimation { get; set; } = true;
+        public TimeSpan AnimationDuration { get; set; } = TimeSpan.FromMilliseconds(400);
+
+        /// <summary>
+        /// Gets or sets the entry animation type
+        /// </summary>
+        public EntryAnimationType EntryAnimation { get; set; } = EntryAnimationType.SlideFromRight;
+
+        /// <summary>
+        /// Gets or sets the exit animation type
+        /// </summary>
+        public ExitAnimationType ExitAnimation { get; set; } = ExitAnimationType.SlideToRight;
+
+        /// <summary>
+        /// Gets or sets the easing function for animations
+        /// </summary>
+        public AnimationEasing EasingFunction { get; set; } = AnimationEasing.EaseOut;
 
         /// <summary>
         /// Gets or sets whether to enable fade-in animation
         /// </summary>
         public bool EnableFadeAnimation { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether to show progress indicator for auto-dismiss
+        /// </summary>
+        public bool ShowProgressIndicator { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the progress indicator style
+        /// </summary>
+        public ProgressIndicatorStyle ProgressStyle { get; set; } = ProgressIndicatorStyle.BottomBar;
+
+        /// <summary>
+        /// Gets or sets whether to enable visual effects (blur, glow)
+        /// </summary>
+        public bool EnableVisualEffects { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the blur radius for background effects
+        /// </summary>
+        public double BlurRadius { get; set; } = 0.0;
+
+        /// <summary>
+        /// Gets or sets the glow intensity for visual effects
+        /// </summary>
+        public double GlowIntensity { get; set; } = 0.0;
+
+        /// <summary>
+        /// Gets or sets whether to enable hover effects
+        /// </summary>
+        public bool EnableHoverEffects { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the scale factor for hover effects
+        /// </summary>
+        public double HoverScaleFactor { get; set; } = 1.02;
+
+        /// <summary>
+        /// Gets or sets whether to enable repositioning animations when notifications are dismissed
+        /// </summary>
+        public bool EnableRepositionAnimations { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the duration for repositioning animations
+        /// </summary>
+        public TimeSpan RepositionAnimationDuration { get; set; } = TimeSpan.FromMilliseconds(250);
 
         #endregion
 
@@ -275,12 +335,206 @@ namespace IntervalToast
                 PauseOnHover = PauseOnHover,
                 ShowCloseButton = ShowCloseButton,
                 ShowTimestamp = ShowTimestamp,
+                AnimationPreset = AnimationPreset,
                 AnimationDuration = AnimationDuration,
-                EnableSlideAnimation = EnableSlideAnimation,
-                EnableFadeAnimation = EnableFadeAnimation
+                EntryAnimation = EntryAnimation,
+                ExitAnimation = ExitAnimation,
+                EasingFunction = EasingFunction,
+                EnableFadeAnimation = EnableFadeAnimation,
+                ShowProgressIndicator = ShowProgressIndicator,
+                ProgressStyle = ProgressStyle,
+                EnableVisualEffects = EnableVisualEffects,
+                BlurRadius = BlurRadius,
+                GlowIntensity = GlowIntensity,
+                EnableHoverEffects = EnableHoverEffects,
+                HoverScaleFactor = HoverScaleFactor,
+                EnableRepositionAnimations = EnableRepositionAnimations,
+                RepositionAnimationDuration = RepositionAnimationDuration
             };
         }
 
         #endregion
+
+        #region Animation Presets
+
+        /// <summary>
+        /// Applies an animation preset to this configuration
+        /// </summary>
+        /// <param name="preset">The preset to apply</param>
+        public void ApplyAnimationPreset(AnimationPreset preset)
+        {
+            switch (preset)
+            {
+                case AnimationPreset.Fast:
+                    AnimationDuration = TimeSpan.FromMilliseconds(200);
+                    RepositionAnimationDuration = TimeSpan.FromMilliseconds(150);
+                    EasingFunction = AnimationEasing.EaseOut;
+                    break;
+
+                case AnimationPreset.Normal:
+                    AnimationDuration = TimeSpan.FromMilliseconds(400);
+                    RepositionAnimationDuration = TimeSpan.FromMilliseconds(250);
+                    EasingFunction = AnimationEasing.EaseOut;
+                    break;
+
+                case AnimationPreset.Slow:
+                    AnimationDuration = TimeSpan.FromMilliseconds(700);
+                    RepositionAnimationDuration = TimeSpan.FromMilliseconds(500);
+                    EasingFunction = AnimationEasing.EaseInOut;
+                    break;
+
+                case AnimationPreset.Smooth:
+                    AnimationDuration = TimeSpan.FromMilliseconds(500);
+                    RepositionAnimationDuration = TimeSpan.FromMilliseconds(350);
+                    EasingFunction = AnimationEasing.EaseInOut;
+                    EnableVisualEffects = true;
+                    HoverScaleFactor = 1.03;
+                    break;
+
+                case AnimationPreset.Minimal:
+                    AnimationDuration = TimeSpan.FromMilliseconds(150);
+                    RepositionAnimationDuration = TimeSpan.FromMilliseconds(100);
+                    EasingFunction = AnimationEasing.Linear;
+                    EnableVisualEffects = false;
+                    EnableHoverEffects = false;
+                    ShowProgressIndicator = false;
+                    break;
+
+                case AnimationPreset.None:
+                    AnimationDuration = TimeSpan.Zero;
+                    RepositionAnimationDuration = TimeSpan.Zero;
+                    EnableFadeAnimation = false;
+                    EnableRepositionAnimations = false;
+                    EnableVisualEffects = false;
+                    EnableHoverEffects = false;
+                    ShowProgressIndicator = false;
+                    break;
+            }
+
+            AnimationPreset = preset;
+        }
+
+        #endregion
     }
+
+    #region Animation Enums
+
+    /// <summary>
+    /// Animation preset configurations for quick setup
+    /// </summary>
+    public enum AnimationPreset
+    {
+        /// <summary>No animations</summary>
+        None,
+        /// <summary>Minimal, fast animations</summary>
+        Minimal,
+        /// <summary>Fast animations with short duration</summary>
+        Fast,
+        /// <summary>Normal speed animations (default)</summary>
+        Normal,
+        /// <summary>Slow, deliberate animations</summary>
+        Slow,
+        /// <summary>Smooth animations with enhanced visual effects</summary>
+        Smooth,
+        /// <summary>Custom animation settings</summary>
+        Custom
+    }
+
+    /// <summary>
+    /// Types of entry animations for notifications
+    /// </summary>
+    public enum EntryAnimationType
+    {
+        /// <summary>No entry animation</summary>
+        None,
+        /// <summary>Fade in from transparent</summary>
+        FadeIn,
+        /// <summary>Slide in from the right edge</summary>
+        SlideFromRight,
+        /// <summary>Slide in from the left edge</summary>
+        SlideFromLeft,
+        /// <summary>Slide in from the top edge</summary>
+        SlideFromTop,
+        /// <summary>Slide in from the bottom edge</summary>
+        SlideFromBottom,
+        /// <summary>Scale up from center</summary>
+        ScaleUp,
+        /// <summary>Bounce in with elastic effect</summary>
+        BounceIn,
+        /// <summary>Fly in with rotation</summary>
+        FlyIn
+    }
+
+    /// <summary>
+    /// Types of exit animations for notifications
+    /// </summary>
+    public enum ExitAnimationType
+    {
+        /// <summary>No exit animation</summary>
+        None,
+        /// <summary>Fade out to transparent</summary>
+        FadeOut,
+        /// <summary>Slide out to the right edge</summary>
+        SlideToRight,
+        /// <summary>Slide out to the left edge</summary>
+        SlideToLeft,
+        /// <summary>Slide out to the top edge</summary>
+        SlideToTop,
+        /// <summary>Slide out to the bottom edge</summary>
+        SlideToBottom,
+        /// <summary>Scale down to center</summary>
+        ScaleDown,
+        /// <summary>Bounce out with elastic effect</summary>
+        BounceOut,
+        /// <summary>Fly out with rotation</summary>
+        FlyOut
+    }
+
+    /// <summary>
+    /// Animation easing functions for smooth transitions
+    /// </summary>
+    public enum AnimationEasing
+    {
+        /// <summary>Linear transition</summary>
+        Linear,
+        /// <summary>Ease in (slow start)</summary>
+        EaseIn,
+        /// <summary>Ease out (slow end)</summary>
+        EaseOut,
+        /// <summary>Ease in and out (slow start and end)</summary>
+        EaseInOut,
+        /// <summary>Bounce effect</summary>
+        Bounce,
+        /// <summary>Elastic effect</summary>
+        Elastic,
+        /// <summary>Back effect (slight overshoot)</summary>
+        Back,
+        /// <summary>Circular motion</summary>
+        Circular,
+        /// <summary>Exponential curve</summary>
+        Exponential
+    }
+
+    /// <summary>
+    /// Progress indicator styles for auto-dismiss countdown
+    /// </summary>
+    public enum ProgressIndicatorStyle
+    {
+        /// <summary>No progress indicator</summary>
+        None,
+        /// <summary>Thin bar at the bottom</summary>
+        BottomBar,
+        /// <summary>Thin bar at the top</summary>
+        TopBar,
+        /// <summary>Circular progress indicator</summary>
+        CircularCorner,
+        /// <summary>Circular progress overlay</summary>
+        CircularCenter,
+        /// <summary>Left border fill</summary>
+        LeftBorder,
+        /// <summary>Right border fill</summary>
+        RightBorder
+    }
+
+    #endregion
 }

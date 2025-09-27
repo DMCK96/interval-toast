@@ -68,7 +68,7 @@
                            FontWeight="Bold"
                            Foreground="White"
                            HorizontalAlignment="Center"/>
-                <TextBlock Text="Phase 1: Custom Notification Window with Positioning System"
+                <TextBlock Text="Phase 2: Animation System and Visual Styling"
                            FontFamily="Segoe UI"
                            FontSize="14"
                            Foreground="#BDC3C7"
@@ -140,6 +140,196 @@
                                     Content="Large Notification"
                                     Style="{StaticResource DemoButtonStyle}"
                                     Click="ShowLargeBtn_Click"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Animation Presets Section -->
+                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
+                    <StackPanel>
+                        <TextBlock Text="Animation Presets"
+                                   FontFamily="Segoe UI"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="#2C3E50"
+                                   Margin="0,0,0,15"/>
+
+                        <WrapPanel Orientation="Horizontal">
+                            <Button x:Name="ShowFastAnimationBtn"
+                                    Content="Fast Animation"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowFastAnimationBtn_Click"/>
+
+                            <Button x:Name="ShowNormalAnimationBtn"
+                                    Content="Normal Animation"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowNormalAnimationBtn_Click"/>
+
+                            <Button x:Name="ShowSmoothAnimationBtn"
+                                    Content="Smooth Animation"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowSmoothAnimationBtn_Click"/>
+
+                            <Button x:Name="ShowBounceAnimationBtn"
+                                    Content="Bounce Animation"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowBounceAnimationBtn_Click"/>
+
+                            <Button x:Name="ShowNoAnimationBtn"
+                                    Content="No Animation"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowNoAnimationBtn_Click"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Entry/Exit Animation Testing Section -->
+                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
+                    <StackPanel>
+                        <TextBlock Text="Entry &amp; Exit Animations"
+                                   FontFamily="Segoe UI"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="#2C3E50"
+                                   Margin="0,0,0,15"/>
+
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="Entry:"
+                                       FontFamily="Segoe UI"
+                                       FontSize="14"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,10,0"/>
+
+                            <ComboBox x:Name="EntryAnimationComboBox"
+                                      Grid.Column="1"
+                                      Style="{StaticResource DemoComboBoxStyle}"
+                                      SelectedIndex="2">
+                                <ComboBoxItem Content="None"/>
+                                <ComboBoxItem Content="Fade In"/>
+                                <ComboBoxItem Content="Slide From Right"/>
+                                <ComboBoxItem Content="Slide From Left"/>
+                                <ComboBoxItem Content="Slide From Top"/>
+                                <ComboBoxItem Content="Slide From Bottom"/>
+                                <ComboBoxItem Content="Scale Up"/>
+                                <ComboBoxItem Content="Bounce In"/>
+                                <ComboBoxItem Content="Fly In"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Column="2"
+                                       Text="Exit:"
+                                       FontFamily="Segoe UI"
+                                       FontSize="14"
+                                       VerticalAlignment="Center"
+                                       Margin="20,0,10,0"/>
+
+                            <ComboBox x:Name="ExitAnimationComboBox"
+                                      Grid.Column="3"
+                                      Style="{StaticResource DemoComboBoxStyle}"
+                                      SelectedIndex="2">
+                                <ComboBoxItem Content="None"/>
+                                <ComboBoxItem Content="Fade Out"/>
+                                <ComboBoxItem Content="Slide To Right"/>
+                                <ComboBoxItem Content="Slide To Left"/>
+                                <ComboBoxItem Content="Slide To Top"/>
+                                <ComboBoxItem Content="Slide To Bottom"/>
+                                <ComboBoxItem Content="Scale Down"/>
+                                <ComboBoxItem Content="Bounce Out"/>
+                                <ComboBoxItem Content="Fly Out"/>
+                            </ComboBox>
+                        </Grid>
+
+                        <Button x:Name="TestCustomAnimationBtn"
+                                Content="Test Custom Animation"
+                                Style="{StaticResource DemoButtonStyle}"
+                                Click="TestCustomAnimationBtn_Click"
+                                HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Progress Indicator Testing Section -->
+                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
+                    <StackPanel>
+                        <TextBlock Text="Progress Indicators"
+                                   FontFamily="Segoe UI"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="#2C3E50"
+                                   Margin="0,0,0,15"/>
+
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="Style:"
+                                       FontFamily="Segoe UI"
+                                       FontSize="14"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,10,0"/>
+
+                            <ComboBox x:Name="ProgressStyleComboBox"
+                                      Grid.Column="1"
+                                      Style="{StaticResource DemoComboBoxStyle}"
+                                      SelectedIndex="1">
+                                <ComboBoxItem Content="None"/>
+                                <ComboBoxItem Content="Bottom Bar"/>
+                                <ComboBoxItem Content="Top Bar"/>
+                                <ComboBoxItem Content="Circular Corner"/>
+                                <ComboBoxItem Content="Circular Center"/>
+                                <ComboBoxItem Content="Left Border"/>
+                                <ComboBoxItem Content="Right Border"/>
+                            </ComboBox>
+
+                            <Button x:Name="TestProgressBtn"
+                                    Grid.Column="2"
+                                    Content="Test Progress"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="TestProgressBtn_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Visual Effects Section -->
+                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
+                    <StackPanel>
+                        <TextBlock Text="Visual Effects"
+                                   FontFamily="Segoe UI"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="#2C3E50"
+                                   Margin="0,0,0,15"/>
+
+                        <WrapPanel Orientation="Horizontal">
+                            <Button x:Name="ShowGlowEffectBtn"
+                                    Content="Glow Effect"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowGlowEffectBtn_Click"/>
+
+                            <Button x:Name="ShowBlurEffectBtn"
+                                    Content="Blur Effect"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowBlurEffectBtn_Click"/>
+
+                            <Button x:Name="ShowHoverEffectsBtn"
+                                    Content="Enhanced Hover"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowHoverEffectsBtn_Click"/>
+
+                            <Button x:Name="ShowCombinedEffectsBtn"
+                                    Content="Combined Effects"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowCombinedEffectsBtn_Click"/>
                         </WrapPanel>
                     </StackPanel>
                 </Border>
@@ -222,11 +412,19 @@
 
         <!-- Footer -->
         <Border Grid.Row="2" Background="#34495E" Padding="15">
-            <TextBlock Text="Phase 1 Implementation: Custom borderless notification windows with multi-monitor positioning support"
-                       FontFamily="Segoe UI"
-                       FontSize="12"
-                       Foreground="#BDC3C7"
-                       HorizontalAlignment="Center"/>
+            <StackPanel>
+                <TextBlock Text="Phase 2 Implementation: Comprehensive animation system with WPF Storyboards, visual effects, and progress indicators"
+                           FontFamily="Segoe UI"
+                           FontSize="12"
+                           Foreground="#BDC3C7"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="Features: Entry/Exit animations, Hover effects, Progress indicators, Visual effects (glow/blur), Smooth repositioning"
+                           FontFamily="Segoe UI"
+                           FontSize="10"
+                           Foreground="#95A5A6"
+                           HorizontalAlignment="Center"
+                           Margin="0,5,0,0"/>
+            </StackPanel>
         </Border>
 
     </Grid>

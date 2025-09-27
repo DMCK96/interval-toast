@@ -24,6 +24,78 @@
                           ShadowDepth="3"
                           Direction="270" />
 
+        <!-- Enhanced drop shadow for hover effects -->
+        <DropShadowEffect x:Key="NotificationShadowEnhanced"
+                          Color="Black"
+                          Opacity="0.4"
+                          BlurRadius="15"
+                          ShadowDepth="5"
+                          Direction="270" />
+
+        <!-- Blur effect for background -->
+        <BlurEffect x:Key="NotificationBlur"
+                    Radius="5" />
+
+        <!-- Glow effect for enhanced visuals -->
+        <DropShadowEffect x:Key="NotificationGlow"
+                          Color="#4A90E2"
+                          Opacity="0.6"
+                          BlurRadius="20"
+                          ShadowDepth="0" />
+
+        <!-- Progress bar styles for different positions -->
+        <Style x:Key="BottomProgressBarStyle" TargetType="Rectangle">
+            <Setter Property="Fill" Value="#4A90E2"/>
+            <Setter Property="Height" Value="3"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Bottom"/>
+            <Setter Property="Width" Value="0"/>
+            <Setter Property="Opacity" Value="0.8"/>
+        </Style>
+
+        <Style x:Key="TopProgressBarStyle" TargetType="Rectangle">
+            <Setter Property="Fill" Value="#4A90E2"/>
+            <Setter Property="Height" Value="3"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="Width" Value="0"/>
+            <Setter Property="Opacity" Value="0.8"/>
+        </Style>
+
+        <Style x:Key="LeftProgressBorderStyle" TargetType="Rectangle">
+            <Setter Property="Fill" Value="#4A90E2"/>
+            <Setter Property="Width" Value="3"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Height" Value="0"/>
+            <Setter Property="Opacity" Value="0.8"/>
+        </Style>
+
+        <Style x:Key="RightProgressBorderStyle" TargetType="Rectangle">
+            <Setter Property="Fill" Value="#4A90E2"/>
+            <Setter Property="Width" Value="3"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Height" Value="0"/>
+            <Setter Property="Opacity" Value="0.8"/>
+        </Style>
+
+        <!-- Circular progress indicator style -->
+        <Style x:Key="CircularProgressStyle" TargetType="Ellipse">
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Stroke" Value="#4A90E2"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+            <Setter Property="Fill" Value="Transparent"/>
+            <Setter Property="StrokeDashArray" Value="0,100"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <RotateTransform Angle="-90"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Style for the close button -->
         <Style x:Key="CloseButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -61,11 +133,53 @@
             Effect="{StaticResource NotificationShadow}"
             Margin="10">
 
+        <!-- Progress indicators overlay -->
         <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+            <!-- Bottom progress bar -->
+            <Rectangle x:Name="BottomProgressBar"
+                       Style="{StaticResource BottomProgressBarStyle}"
+                       Visibility="Collapsed"/>
+
+            <!-- Top progress bar -->
+            <Rectangle x:Name="TopProgressBar"
+                       Style="{StaticResource TopProgressBarStyle}"
+                       Visibility="Collapsed"/>
+
+            <!-- Left progress border -->
+            <Rectangle x:Name="LeftProgressBorder"
+                       Style="{StaticResource LeftProgressBorderStyle}"
+                       Visibility="Collapsed"/>
+
+            <!-- Right progress border -->
+            <Rectangle x:Name="RightProgressBorder"
+                       Style="{StaticResource RightProgressBorderStyle}"
+                       Visibility="Collapsed"/>
+
+            <!-- Circular progress indicator (corner) -->
+            <Ellipse x:Name="CircularProgressCorner"
+                     Style="{StaticResource CircularProgressStyle}"
+                     HorizontalAlignment="Right"
+                     VerticalAlignment="Top"
+                     Margin="0,8,8,0"
+                     Visibility="Collapsed"/>
+
+            <!-- Circular progress indicator (center overlay) -->
+            <Ellipse x:Name="CircularProgressCenter"
+                     Style="{StaticResource CircularProgressStyle}"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     Width="40"
+                     Height="40"
+                     StrokeThickness="3"
+                     Opacity="0.7"
+                     Visibility="Collapsed"/>
+
+            <!-- Main content grid -->
+            <Grid x:Name="MainContentGrid">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
             <!-- Header with title and close button -->
             <Grid Grid.Row="0" Margin="12,8,8,4">
@@ -132,6 +246,7 @@
                                Foreground="#888"
                                Margin="0,4,0,0"/>
                 </StackPanel>
+                </Grid>
             </Grid>
         </Grid>
     </Border>

@@ -8,7 +8,8 @@ namespace IntervalToast
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
-    /// Demo application for the IntervalToast notification system Phase 1 implementation.
+    /// Demo application for the IntervalToast notification system Phase 2 implementation.
+    /// Showcases comprehensive animation system with visual effects and progress indicators.
     /// </summary>
     public partial class MainWindow : Window
     {
@@ -252,6 +253,277 @@ namespace IntervalToast
             {
                 SystemInfoTextBlock.Text = $"Error retrieving system information: {ex.Message}";
             }
+        }
+
+        #endregion
+
+        #region Animation Preset Event Handlers
+
+        /// <summary>
+        /// Shows a notification with fast animation preset
+        /// </summary>
+        private void ShowFastAnimationBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var config = NotificationConfiguration.CreateDefault();
+            config.ApplyAnimationPreset(AnimationPreset.Fast);
+
+            var notification = new NotificationWindow(config);
+            notification.ShowNotification(
+                "Fast Animation",
+                "This notification uses the Fast animation preset with quick transitions and minimal effects."
+            );
+        }
+
+        /// <summary>
+        /// Shows a notification with normal animation preset
+        /// </summary>
+        private void ShowNormalAnimationBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var config = NotificationConfiguration.CreateDefault();
+            config.ApplyAnimationPreset(AnimationPreset.Normal);
+
+            var notification = new NotificationWindow(config);
+            notification.ShowNotification(
+                "Normal Animation",
+                "This notification uses the Normal animation preset with balanced timing and smooth effects."
+            );
+        }
+
+        /// <summary>
+        /// Shows a notification with smooth animation preset
+        /// </summary>
+        private void ShowSmoothAnimationBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var config = NotificationConfiguration.CreateDefault();
+            config.ApplyAnimationPreset(AnimationPreset.Smooth);
+
+            var notification = new NotificationWindow(config);
+            notification.ShowNotification(
+                "Smooth Animation",
+                "This notification uses the Smooth animation preset with enhanced visual effects and gentle timing."
+            );
+        }
+
+        /// <summary>
+        /// Shows a notification with bounce animation
+        /// </summary>
+        private void ShowBounceAnimationBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var config = NotificationConfiguration.CreateDefault();
+            config.EntryAnimation = EntryAnimationType.BounceIn;
+            config.ExitAnimation = ExitAnimationType.BounceOut;
+            config.EasingFunction = AnimationEasing.Bounce;
+
+            var notification = new NotificationWindow(config);
+            notification.ShowNotification(
+                "Bounce Animation",
+                "This notification demonstrates bounce animations with elastic effects for a playful feel."
+            );
+        }
+
+        /// <summary>
+        /// Shows a notification with no animations
+        /// </summary>
+        private void ShowNoAnimationBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var config = NotificationConfiguration.CreateDefault();
+            config.ApplyAnimationPreset(AnimationPreset.None);
+
+            var notification = new NotificationWindow(config);
+            notification.ShowNotification(
+                "No Animation",
+                "This notification appears instantly without any animations for immediate visibility."
+            );
+        }
+
+        #endregion
+
+        #region Custom Animation Event Handlers
+
+        /// <summary>
+        /// Tests custom animation combinations
+        /// </summary>
+        private void TestCustomAnimationBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var config = NotificationConfiguration.CreateDefault();
+
+            // Get selected entry animation
+            config.EntryAnimation = GetSelectedEntryAnimation();
+
+            // Get selected exit animation
+            config.ExitAnimation = GetSelectedExitAnimation();
+
+            // Set custom timing
+            config.AnimationDuration = TimeSpan.FromMilliseconds(600);
+            config.EasingFunction = AnimationEasing.EaseInOut;
+
+            var notification = new NotificationWindow(config);
+            notification.ShowNotification(
+                $"Custom Animation Test",
+                $"Entry: {config.EntryAnimation}, Exit: {config.ExitAnimation}. This demonstrates custom animation combinations."
+            );
+        }
+
+        /// <summary>
+        /// Gets the selected entry animation from the combo box
+        /// </summary>
+        private EntryAnimationType GetSelectedEntryAnimation()
+        {
+            return EntryAnimationComboBox.SelectedIndex switch
+            {
+                0 => EntryAnimationType.None,
+                1 => EntryAnimationType.FadeIn,
+                2 => EntryAnimationType.SlideFromRight,
+                3 => EntryAnimationType.SlideFromLeft,
+                4 => EntryAnimationType.SlideFromTop,
+                5 => EntryAnimationType.SlideFromBottom,
+                6 => EntryAnimationType.ScaleUp,
+                7 => EntryAnimationType.BounceIn,
+                8 => EntryAnimationType.FlyIn,
+                _ => EntryAnimationType.SlideFromRight
+            };
+        }
+
+        /// <summary>
+        /// Gets the selected exit animation from the combo box
+        /// </summary>
+        private ExitAnimationType GetSelectedExitAnimation()
+        {
+            return ExitAnimationComboBox.SelectedIndex switch
+            {
+                0 => ExitAnimationType.None,
+                1 => ExitAnimationType.FadeOut,
+                2 => ExitAnimationType.SlideToRight,
+                3 => ExitAnimationType.SlideToLeft,
+                4 => ExitAnimationType.SlideToTop,
+                5 => ExitAnimationType.SlideToBottom,
+                6 => ExitAnimationType.ScaleDown,
+                7 => ExitAnimationType.BounceOut,
+                8 => ExitAnimationType.FlyOut,
+                _ => ExitAnimationType.SlideToRight
+            };
+        }
+
+        #endregion
+
+        #region Progress Indicator Event Handlers
+
+        /// <summary>
+        /// Tests progress indicator with selected style
+        /// </summary>
+        private void TestProgressBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var config = NotificationConfiguration.CreateDefault();
+            config.ProgressStyle = GetSelectedProgressStyle();
+            config.ShowProgressIndicator = config.ProgressStyle != ProgressIndicatorStyle.None;
+            config.AutoCloseDelay = TimeSpan.FromSeconds(8); // Longer delay to see progress
+
+            var notification = new NotificationWindow(config);
+            notification.ShowNotification(
+                "Progress Indicator Test",
+                $"This notification demonstrates the {config.ProgressStyle} progress indicator. Watch the progress animation!"
+            );
+        }
+
+        /// <summary>
+        /// Gets the selected progress style from the combo box
+        /// </summary>
+        private ProgressIndicatorStyle GetSelectedProgressStyle()
+        {
+            return ProgressStyleComboBox.SelectedIndex switch
+            {
+                0 => ProgressIndicatorStyle.None,
+                1 => ProgressIndicatorStyle.BottomBar,
+                2 => ProgressIndicatorStyle.TopBar,
+                3 => ProgressIndicatorStyle.CircularCorner,
+                4 => ProgressIndicatorStyle.CircularCenter,
+                5 => ProgressIndicatorStyle.LeftBorder,
+                6 => ProgressIndicatorStyle.RightBorder,
+                _ => ProgressIndicatorStyle.BottomBar
+            };
+        }
+
+        #endregion
+
+        #region Visual Effects Event Handlers
+
+        /// <summary>
+        /// Shows a notification with glow effect
+        /// </summary>
+        private void ShowGlowEffectBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var config = NotificationConfiguration.CreateDefault();
+            config.EnableVisualEffects = true;
+            config.GlowIntensity = 0.8;
+            config.EntryAnimation = EntryAnimationType.ScaleUp;
+            config.EasingFunction = AnimationEasing.Back;
+
+            var notification = new NotificationWindow(config);
+            notification.ShowNotification(
+                "Glow Effect",
+                "This notification features a beautiful glow effect that enhances visibility and creates visual appeal."
+            );
+        }
+
+        /// <summary>
+        /// Shows a notification with blur effect
+        /// </summary>
+        private void ShowBlurEffectBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var config = NotificationConfiguration.CreateDefault();
+            config.EnableVisualEffects = true;
+            config.BlurRadius = 3.0;
+            config.EntryAnimation = EntryAnimationType.FadeIn;
+            config.AnimationDuration = TimeSpan.FromMilliseconds(800);
+
+            var notification = new NotificationWindow(config);
+            notification.ShowNotification(
+                "Blur Effect",
+                "This notification demonstrates a subtle blur effect that creates depth and modern visual styling."
+            );
+        }
+
+        /// <summary>
+        /// Shows a notification with enhanced hover effects
+        /// </summary>
+        private void ShowHoverEffectsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var config = NotificationConfiguration.CreateDefault();
+            config.EnableHoverEffects = true;
+            config.HoverScaleFactor = 1.05;
+            config.EnableVisualEffects = true;
+            config.AutoCloseDelay = TimeSpan.FromSeconds(10); // Longer to test hover
+
+            var notification = new NotificationWindow(config);
+            notification.ShowNotification(
+                "Enhanced Hover Effects",
+                "This notification has enhanced hover effects. Try hovering over it to see the smooth scaling and visual changes!"
+            );
+        }
+
+        /// <summary>
+        /// Shows a notification with combined visual effects
+        /// </summary>
+        private void ShowCombinedEffectsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var config = NotificationConfiguration.CreateDefault();
+            config.EnableVisualEffects = true;
+            config.GlowIntensity = 0.6;
+            config.BlurRadius = 2.0;
+            config.EnableHoverEffects = true;
+            config.HoverScaleFactor = 1.03;
+            config.EntryAnimation = EntryAnimationType.FlyIn;
+            config.ExitAnimation = ExitAnimationType.FlyOut;
+            config.EasingFunction = AnimationEasing.Elastic;
+            config.AnimationDuration = TimeSpan.FromMilliseconds(700);
+            config.ShowProgressIndicator = true;
+            config.ProgressStyle = ProgressIndicatorStyle.CircularCorner;
+
+            var notification = new NotificationWindow(config);
+            notification.ShowNotification(
+                "Combined Effects Showcase",
+                "This notification combines glow, blur, hover effects, flying animations, and progress indicators for the ultimate visual experience!"
+            );
         }
 
         #endregion

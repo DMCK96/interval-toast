@@ -76,8 +76,37 @@ namespace IntervalToast
         /// <param name="notificationWindow">The notification window being closed</param>
         public void UnregisterNotification(NotificationWindow notificationWindow)
         {
-            _activeNotifications.Remove(notificationWindow);
-            RepositionExistingNotifications();
+            if (_activeNotifications.Remove(notificationWindow))
+            {
+                // Only reposition if we actually removed a notification
+                RepositionExistingNotifications();
+            }
+        }
+
+        /// <summary>
+        /// Gets the current number of active notifications
+        /// </summary>
+        /// <returns>The count of active notifications</returns>
+        public int GetActiveNotificationCount()
+        {
+            return _activeNotifications.Count;
+        }
+
+        /// <summary>
+        /// Gets all active notifications (read-only)
+        /// </summary>
+        /// <returns>A read-only list of active notifications</returns>
+        public IReadOnlyList<NotificationWindow> GetActiveNotifications()
+        {
+            return _activeNotifications.AsReadOnly();
+        }
+
+        /// <summary>
+        /// Clears all active notifications without repositioning
+        /// </summary>
+        public void ClearAllNotifications()
+        {
+            _activeNotifications.Clear();
         }
 
         /// <summary>
@@ -210,7 +239,7 @@ namespace IntervalToast
         }
 
         /// <summary>
-        /// Repositions existing notifications when one is closed
+        /// Repositions existing notifications when one is closed with smooth animations
         /// </summary>
         private void RepositionExistingNotifications()
         {
@@ -226,7 +255,7 @@ namespace IntervalToast
                 workingArea.Width,
                 workingArea.Height);
 
-            // Reposition each notification
+            // Reposition each notification with animation
             for (int i = 0; i < _activeNotifications.Count; i++)
             {
                 var notification = _activeNotifications[i];
@@ -241,10 +270,74 @@ namespace IntervalToast
                 var stackOffset = i * (notification.Height + NotificationSpacing);
                 var newPosition = new System.Windows.Point(basePosition.X, basePosition.Y - stackOffset);
 
-                // Animate to new position (for now, just set directly)
-                notification.Left = newPosition.X;
-                notification.Top = newPosition.Y;
+                // Animate to new position using the notification's AnimateToPosition method
+                notification.AnimateToPosition(newPosition);
             }
+        }
+
+        /// <summary>
+        /// Repositions all notifications to their correct stacked positions with animations
+        /// </summary>
+        /// <param name="position">The base position for stacking</param>
+        /// <param name="workingArea">The screen working area</param>
+        public void RepositionAllNotifications(NotificationPosition position, Rect workingArea)
+        {
+            if (_activeNotifications.Count == 0)
+                return;
+
+            for (int i = 0; i < _activeNotifications.Count; i++)
+            {
+                var notification = _activeNotifications[i];
+                var basePosition = CalculateBasePosition(
+                    workingArea,
+                    notification.Width,
+                    notification.Height,
+                    position);
+
+                var adjustedPosition = AdjustPositionForIndex(basePosition, i, notification.Height, position, workingArea);
+                notification.AnimateToPosition(adjustedPosition);
+            }
+        }
+
+        /// <summary>
+        /// Adjusts position for a specific index in the stack
+        /// </summary>
+        private System.Windows.Point AdjustPositionForIndex(System.Windows.Point basePosition, int index, double windowHeight,
+            NotificationPosition position, Rect workingArea)
+        {
+            var adjustedPosition = basePosition;
+            var stackOffset = index * (windowHeight + NotificationSpacing);
+
+            switch (position)
+            {
+                case NotificationPosition.TopRight:
+                case NotificationPosition.TopLeft:
+                case NotificationPosition.TopCenter:
+                    // Stack downward from top positions
+                    adjustedPosition.Y += stackOffset;
+
+                    // Ensure we don't go below the working area
+                    if (adjustedPosition.Y + windowHeight > workingArea.Bottom)
+                    {
+                        adjustedPosition.Y = workingArea.Bottom - windowHeight - NotificationSpacing;
+                    }
+                    break;
+
+                case NotificationPosition.BottomRight:
+                case NotificationPosition.BottomLeft:
+                case NotificationPosition.BottomCenter:
+                    // Stack upward from bottom positions
+                    adjustedPosition.Y -= stackOffset;
+
+                    // Ensure we don't go above the working area
+                    if (adjustedPosition.Y < workingArea.Top)
+                    {
+                        adjustedPosition.Y = workingArea.Top + NotificationSpacing;
+                    }
+                    break;
+            }
+
+            return adjustedPosition;
         }
 
         #endregion
