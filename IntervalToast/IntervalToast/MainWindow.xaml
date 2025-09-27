@@ -1,0 +1,233 @@
+﻿<Window x:Class="IntervalToast.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:IntervalToast"
+        mc:Ignorable="d"
+        Title="IntervalToast - Notification Demo" Height="450" Width="800"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <!-- Button style -->
+        <Style x:Key="DemoButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#4A90E2"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="Margin" Value="10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#5BA0F2"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#3A80D2"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ComboBox style -->
+        <Style x:Key="DemoComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Margin" Value="5,0"/>
+            <Setter Property="MinWidth" Value="120"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Background="#F8F9FA">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#2C3E50" Padding="20">
+            <StackPanel>
+                <TextBlock Text="IntervalToast Notification System"
+                           FontFamily="Segoe UI"
+                           FontSize="24"
+                           FontWeight="Bold"
+                           Foreground="White"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="Phase 1: Custom Notification Window with Positioning System"
+                           FontFamily="Segoe UI"
+                           FontSize="14"
+                           Foreground="#BDC3C7"
+                           HorizontalAlignment="Center"
+                           Margin="0,5,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Main content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="20">
+            <StackPanel MaxWidth="600">
+
+                <!-- Basic Notifications Section -->
+                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
+                    <StackPanel>
+                        <TextBlock Text="Basic Notifications"
+                                   FontFamily="Segoe UI"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="#2C3E50"
+                                   Margin="0,0,0,15"/>
+
+                        <WrapPanel Orientation="Horizontal">
+                            <Button x:Name="ShowDefaultBtn"
+                                    Content="Show Default Notification"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowDefaultBtn_Click"/>
+
+                            <Button x:Name="ShowCustomMessageBtn"
+                                    Content="Show Custom Message"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowCustomMessageBtn_Click"/>
+
+                            <Button x:Name="ShowMultipleBtn"
+                                    Content="Show Multiple Notifications"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowMultipleBtn_Click"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Themed Notifications Section -->
+                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
+                    <StackPanel>
+                        <TextBlock Text="Themed Notifications"
+                                   FontFamily="Segoe UI"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="#2C3E50"
+                                   Margin="0,0,0,15"/>
+
+                        <WrapPanel Orientation="Horizontal">
+                            <Button x:Name="ShowLightThemeBtn"
+                                    Content="Light Theme"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowLightThemeBtn_Click"/>
+
+                            <Button x:Name="ShowDarkThemeBtn"
+                                    Content="Dark Theme"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowDarkThemeBtn_Click"/>
+
+                            <Button x:Name="ShowMinimalBtn"
+                                    Content="Minimal Style"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowMinimalBtn_Click"/>
+
+                            <Button x:Name="ShowLargeBtn"
+                                    Content="Large Notification"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="ShowLargeBtn_Click"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Position Testing Section -->
+                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
+                    <StackPanel>
+                        <TextBlock Text="Position Testing"
+                                   FontFamily="Segoe UI"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="#2C3E50"
+                                   Margin="0,0,0,15"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="Position:"
+                                       FontFamily="Segoe UI"
+                                       FontSize="14"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,10,0"/>
+
+                            <ComboBox x:Name="PositionComboBox"
+                                      Grid.Column="1"
+                                      Style="{StaticResource DemoComboBoxStyle}"
+                                      SelectedIndex="2">
+                                <ComboBoxItem Content="Top Right"/>
+                                <ComboBoxItem Content="Top Left"/>
+                                <ComboBoxItem Content="Bottom Right"/>
+                                <ComboBoxItem Content="Bottom Left"/>
+                                <ComboBoxItem Content="Top Center"/>
+                                <ComboBoxItem Content="Bottom Center"/>
+                            </ComboBox>
+
+                            <Button x:Name="TestPositionBtn"
+                                    Grid.Column="2"
+                                    Content="Test Position"
+                                    Style="{StaticResource DemoButtonStyle}"
+                                    Click="TestPositionBtn_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- System Information Section -->
+                <Border Background="White" CornerRadius="8" Padding="20">
+                    <StackPanel>
+                        <TextBlock Text="System Information"
+                                   FontFamily="Segoe UI"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="#2C3E50"
+                                   Margin="0,0,0,15"/>
+
+                        <TextBlock x:Name="SystemInfoTextBlock"
+                                   FontFamily="Consolas"
+                                   FontSize="12"
+                                   Foreground="#555"
+                                   Background="#F8F9FA"
+                                   Padding="10"
+                                   TextWrapping="Wrap"
+                                   Text="Loading system information..."/>
+
+                        <Button x:Name="RefreshSystemInfoBtn"
+                                Content="Refresh System Info"
+                                Style="{StaticResource DemoButtonStyle}"
+                                Click="RefreshSystemInfoBtn_Click"
+                                HorizontalAlignment="Left"
+                                Margin="0,10,0,0"/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Background="#34495E" Padding="15">
+            <TextBlock Text="Phase 1 Implementation: Custom borderless notification windows with multi-monitor positioning support"
+                       FontFamily="Segoe UI"
+                       FontSize="12"
+                       Foreground="#BDC3C7"
+                       HorizontalAlignment="Center"/>
+        </Border>
+
+    </Grid>
+</Window>
