@@ -64,6 +64,15 @@ namespace IntervalToast
             Focusable = true;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the HotkeyEditWindow with automatic title
+        /// </summary>
+        /// <param name="hotkeyConfig">The current hotkey configuration to edit</param>
+        public HotkeyEditWindow(HotkeyConfiguration hotkeyConfig)
+            : this(hotkeyConfig, hotkeyConfig?.Description ?? "Custom Hotkey")
+        {
+        }
+
         #endregion
 
         #region Event Handlers

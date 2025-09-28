@@ -26,6 +26,7 @@ namespace IntervalToast
         private readonly ScheduleManager _scheduleManager;
         private bool _isMinimizedToTray = false;
         private bool _suppressCloseToTray = false;
+        private List<HotkeyDisplayItem> _hotkeyDisplayItems = new();
 
         #endregion
 
@@ -113,6 +114,10 @@ namespace IntervalToast
             // Initialize schedule UI
             InitializeScheduleUI();
             UpdateScheduleUI();
+
+            // Initialize hotkey UI
+            InitializeHotkeyUI();
+            UpdateHotkeyUI();
 
             // Start schedule manager
             _scheduleManager.Start();
@@ -820,6 +825,220 @@ namespace IntervalToast
             UpdateIntervalUI();
         }
 
+        // Hotkey tab buttons
+        private void ToggleHotkeySystemBtn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _hotkeyManager.IsEnabled = !_hotkeyManager.IsEnabled;
+                UpdateHotkeyUI();
+
+                var statusMessage = _hotkeyManager.IsEnabled ? "Hotkey system enabled" : "Hotkey system disabled";
+                ShowSuccessMessage("Hotkey System", statusMessage);
+            }
+            catch (Exception ex)
+            {
+                ShowErrorMessage("Hotkey System Error", $"Failed to toggle hotkey system: {ex.Message}");
+            }
+        }
+
+        private void RefreshHotkeysBtn_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateHotkeyUI();
+            ShowInfoMessage("Hotkeys Refreshed", "Hotkey list has been refreshed");
+        }
+
+        private void TestAllHotkeysBtn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var registeredHotkeys = _hotkeyManager.GetRegisteredHotkeys();
+                var enabledCount = registeredHotkeys.Count(h => h.IsEnabled);
+
+                ShowInfoMessage("Hotkey Test", $"Testing {enabledCount} enabled hotkeys. Try pressing them to verify functionality.");
+            }
+            catch (Exception ex)
+            {
+                ShowErrorMessage("Hotkey Test Error", ex.Message);
+            }
+        }
+
+        private void AddHotkeyBtn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var newHotkey = new HotkeyConfiguration
+                {
+                    Description = "New Custom Hotkey",
+                    IsEnabled = true,
+                    Action = () => ShowInfoMessage("Custom Hotkey", "Custom hotkey action executed")
+                };
+
+                var editWindow = new HotkeyEditWindow(newHotkey);
+                editWindow.Owner = this;
+
+                if (editWindow.ShowDialog() == true && editWindow.EditedHotkey != null)
+                {
+                    var success = _hotkeyManager.RegisterHotkey(editWindow.EditedHotkey);
+                    if (success)
+                    {
+                        UpdateHotkeyUI();
+                        ShowSuccessMessage("Hotkey Added", $"Hotkey '{editWindow.EditedHotkey.DisplayName}' has been added successfully");
+                    }
+                    else
+                    {
+                        ShowErrorMessage("Hotkey Registration Failed", "Failed to register the new hotkey. It may conflict with an existing hotkey.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowErrorMessage("Add Hotkey Error", ex.Message);
+            }
+        }
+
+        private void ResetHotkeysBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (ShowConfirmationDialog("Reset Hotkeys", "Are you sure you want to reset all hotkeys to defaults? This will remove any custom hotkeys you've added."))
+            {
+                try
+                {
+                    _hotkeyManager.UnregisterAllHotkeys();
+                    _hotkeyManager.RegisterDefaultHotkeys();
+                    UpdateHotkeyUI();
+                    ShowSuccessMessage("Hotkeys Reset", "All hotkeys have been reset to default configuration");
+                }
+                catch (Exception ex)
+                {
+                    ShowErrorMessage("Reset Hotkeys Error", ex.Message);
+                }
+            }
+        }
+
+        private void EditHotkeyBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button button && button.Tag is HotkeyDisplayItem displayItem)
+            {
+                try
+                {
+                    var hotkey = displayItem.HotkeyConfiguration;
+                    var editWindow = new HotkeyEditWindow(hotkey);
+                    editWindow.Owner = this;
+
+                    if (editWindow.ShowDialog() == true && editWindow.EditedHotkey != null)
+                    {
+                        // Unregister old hotkey
+                        _hotkeyManager.UnregisterHotkey(hotkey);
+
+                        // Register new hotkey
+                        var success = _hotkeyManager.RegisterHotkey(editWindow.EditedHotkey);
+                        if (success)
+                        {
+                            UpdateHotkeyUI();
+                            ShowSuccessMessage("Hotkey Updated", $"Hotkey has been updated to '{editWindow.EditedHotkey.DisplayName}'");
+                        }
+                        else
+                        {
+                            // Re-register original if new one failed
+                            _hotkeyManager.RegisterHotkey(hotkey);
+                            ShowErrorMessage("Hotkey Update Failed", "Failed to update hotkey. Original hotkey restored.");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ShowErrorMessage("Edit Hotkey Error", ex.Message);
+                }
+            }
+        }
+
+        private void TestHotkeyBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button button && button.Tag is HotkeyDisplayItem displayItem)
+            {
+                try
+                {
+                    var hotkey = displayItem.HotkeyConfiguration;
+                    if (hotkey.Action != null)
+                    {
+                        hotkey.Action.Invoke();
+                        ShowSuccessMessage("Hotkey Test", $"Hotkey '{hotkey.DisplayName}' action executed successfully");
+                    }
+                    else
+                    {
+                        ShowInfoMessage("Hotkey Test", $"Hotkey '{hotkey.DisplayName}' has no action defined");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ShowErrorMessage("Hotkey Test Error", ex.Message);
+                }
+            }
+        }
+
+        private void CloneHotkeyBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button button && button.Tag is HotkeyDisplayItem displayItem)
+            {
+                try
+                {
+                    var originalHotkey = displayItem.HotkeyConfiguration;
+                    var clonedHotkey = originalHotkey.Clone();
+                    clonedHotkey.Description = $"{originalHotkey.Description} (Copy)";
+                    clonedHotkey.Id = 0; // Reset ID to get a new one
+
+                    var editWindow = new HotkeyEditWindow(clonedHotkey);
+                    editWindow.Owner = this;
+
+                    if (editWindow.ShowDialog() == true && editWindow.EditedHotkey != null)
+                    {
+                        var success = _hotkeyManager.RegisterHotkey(editWindow.EditedHotkey);
+                        if (success)
+                        {
+                            UpdateHotkeyUI();
+                            ShowSuccessMessage("Hotkey Cloned", $"Hotkey has been cloned as '{editWindow.EditedHotkey.DisplayName}'");
+                        }
+                        else
+                        {
+                            ShowErrorMessage("Hotkey Clone Failed", "Failed to register the cloned hotkey");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ShowErrorMessage("Clone Hotkey Error", ex.Message);
+                }
+            }
+        }
+
+        private void DeleteHotkeyBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button button && button.Tag is HotkeyDisplayItem displayItem)
+            {
+                var hotkey = displayItem.HotkeyConfiguration;
+                if (ShowConfirmationDialog("Delete Hotkey", $"Are you sure you want to delete the hotkey '{hotkey.DisplayName}'?"))
+                {
+                    try
+                    {
+                        var success = _hotkeyManager.UnregisterHotkey(hotkey);
+                        if (success)
+                        {
+                            UpdateHotkeyUI();
+                            ShowSuccessMessage("Hotkey Deleted", $"Hotkey '{hotkey.DisplayName}' has been deleted");
+                        }
+                        else
+                        {
+                            ShowErrorMessage("Delete Failed", "Failed to delete the hotkey");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowErrorMessage("Delete Hotkey Error", ex.Message);
+                    }
+                }
+            }
+        }
+
         #endregion
 
         #region Helper Methods
@@ -1218,6 +1437,139 @@ namespace IntervalToast
             Dispatcher.BeginInvoke(() => UpdateScheduleUI());
         }
 
+        /// <summary>
+        /// Initializes the hotkey UI components
+        /// </summary>
+        private void InitializeHotkeyUI()
+        {
+            try
+            {
+                // Subscribe to hotkey manager events
+                _hotkeyManager.HotkeyPressed += OnHotkeyPressed;
+                _hotkeyManager.HotkeyRegistered += OnHotkeyRegistered;
+                _hotkeyManager.HotkeyUnregistered += OnHotkeyUnregistered;
+                _hotkeyManager.HotkeyRegistrationFailed += OnHotkeyRegistrationFailed;
+                _hotkeyManager.SystemStateChanged += OnHotkeySystemStateChanged;
+
+                Debug.WriteLine("Hotkey UI initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to initialize hotkey UI: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Updates the hotkey UI with current data
+        /// </summary>
+        private void UpdateHotkeyUI()
+        {
+            try
+            {
+                // Update system status
+                var isEnabled = _hotkeyManager.IsEnabled;
+                HotkeySystemStatusText.Text = isEnabled ? "Enabled" : "Disabled";
+                HotkeySystemStatusText.Foreground = new System.Windows.Media.SolidColorBrush(
+                    isEnabled ? System.Windows.Media.Color.FromRgb(39, 174, 96) : System.Windows.Media.Color.FromRgb(231, 76, 60));
+
+                // Update toggle button
+                ToggleHotkeySystemBtn.Content = isEnabled ? "Disable Hotkeys" : "Enable Hotkeys";
+                ToggleHotkeySystemBtn.Style = (Style)FindResource(isEnabled ? "DangerButtonStyle" : "SuccessButtonStyle");
+
+                // Get registered hotkeys
+                var registeredHotkeys = _hotkeyManager.GetRegisteredHotkeys();
+                RegisteredHotkeysText.Text = $"{registeredHotkeys.Count} Registered";
+
+                // Check for conflicts (simplified - just show 0 for now)
+                HotkeyConflictsText.Text = "0 Conflicts";
+
+                // Create display items for DataGrid
+                _hotkeyDisplayItems.Clear();
+                foreach (var hotkey in registeredHotkeys)
+                {
+                    _hotkeyDisplayItems.Add(new HotkeyDisplayItem
+                    {
+                        HotkeyConfiguration = hotkey,
+                        IsEnabled = hotkey.IsEnabled,
+                        DisplayName = hotkey.DisplayName,
+                        Description = hotkey.Description,
+                        StatusText = hotkey.IsRegistered ? "Active" : "Inactive"
+                    });
+                }
+
+                // Update DataGrid
+                HotkeyDataGrid.ItemsSource = null;
+                HotkeyDataGrid.ItemsSource = _hotkeyDisplayItems;
+
+                Debug.WriteLine($"Hotkey UI updated with {registeredHotkeys.Count} hotkeys");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error updating hotkey UI: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Event handler for hotkey pressed
+        /// </summary>
+        private void OnHotkeyPressed(object? sender, HotkeyEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                Debug.WriteLine($"Hotkey pressed: {e.Hotkey.DisplayName}");
+                UpdateRecentActivity($"Hotkey: {e.Hotkey.Description}");
+            });
+        }
+
+        /// <summary>
+        /// Event handler for hotkey registered
+        /// </summary>
+        private void OnHotkeyRegistered(object? sender, HotkeyEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                UpdateHotkeyUI();
+                Debug.WriteLine($"Hotkey registered: {e.Hotkey.DisplayName}");
+            });
+        }
+
+        /// <summary>
+        /// Event handler for hotkey unregistered
+        /// </summary>
+        private void OnHotkeyUnregistered(object? sender, HotkeyEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                UpdateHotkeyUI();
+                Debug.WriteLine($"Hotkey unregistered: {e.Hotkey.DisplayName}");
+            });
+        }
+
+        /// <summary>
+        /// Event handler for hotkey registration failure
+        /// </summary>
+        private void OnHotkeyRegistrationFailed(object? sender, HotkeyRegistrationFailedEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                UpdateHotkeyUI();
+                ShowErrorMessage("Hotkey Registration Failed",
+                    $"Failed to register hotkey '{e.Hotkey.DisplayName}': {e.Exception.Message}");
+            });
+        }
+
+        /// <summary>
+        /// Event handler for hotkey system state change
+        /// </summary>
+        private void OnHotkeySystemStateChanged(object? sender, HotkeySystemStateChangedEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                UpdateHotkeyUI();
+                Debug.WriteLine($"Hotkey system state changed: {(e.IsEnabled ? "Enabled" : "Disabled")}");
+            });
+        }
+
         #endregion
     }
 
@@ -1232,6 +1584,18 @@ namespace IntervalToast
         public string DefaultTimeout { get; set; } = string.Empty;
         public bool AllowAutoDismiss { get; set; }
         public string IconContent { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Display item for hotkey data grid
+    /// </summary>
+    public class HotkeyDisplayItem
+    {
+        public HotkeyConfiguration HotkeyConfiguration { get; set; } = new();
+        public bool IsEnabled { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string StatusText { get; set; } = string.Empty;
     }
 
     #endregion
