@@ -5,26 +5,29 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:IntervalToast"
         mc:Ignorable="d"
-        Title="IntervalToast - Notification Demo" Height="450" Width="800"
-        WindowStartupLocation="CenterScreen">
+        Title="IntervalToast - Configuration Dashboard" Height="720" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        MinHeight="600" MinWidth="900"
+        StateChanged="Window_StateChanged"
+        Closing="Window_Closing">
 
     <Window.Resources>
-        <!-- Button style -->
-        <Style x:Key="DemoButtonStyle" TargetType="Button">
+        <!-- Modern Button Style -->
+        <Style x:Key="ConfigButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="#4A90E2"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontFamily" Value="Segoe UI"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Padding" Value="20,10"/>
-            <Setter Property="Margin" Value="10"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Margin" Value="5"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border Background="{TemplateBinding Background}"
-                                CornerRadius="6"
+                                CornerRadius="4"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"/>
@@ -36,19 +39,59 @@
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter Property="Background" Value="#3A80D2"/>
                             </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="#CCCCCC"/>
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
 
-        <!-- ComboBox style -->
-        <Style x:Key="DemoComboBoxStyle" TargetType="ComboBox">
+        <!-- Secondary Button Style -->
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource ConfigButtonStyle}">
+            <Setter Property="Background" Value="#6C757D"/>
+        </Style>
+
+        <!-- Danger Button Style -->
+        <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource ConfigButtonStyle}">
+            <Setter Property="Background" Value="#DC3545"/>
+        </Style>
+
+        <!-- Success Button Style -->
+        <Style x:Key="SuccessButtonStyle" TargetType="Button" BasedOn="{StaticResource ConfigButtonStyle}">
+            <Setter Property="Background" Value="#28A745"/>
+        </Style>
+
+        <!-- Card Panel Style -->
+        <Style x:Key="CardPanelStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="0,0,0,20"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect ShadowDepth="2" BlurRadius="8" Opacity="0.1" Color="Black"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Section Header Style -->
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe UI"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Padding" Value="8,6"/>
-            <Setter Property="Margin" Value="5,0"/>
-            <Setter Property="MinWidth" Value="120"/>
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#2C3E50"/>
+            <Setter Property="Margin" Value="0,0,0,15"/>
+        </Style>
+
+        <!-- Tab Style -->
+        <Style x:Key="ConfigTabStyle" TargetType="TabItem">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Padding" Value="20,12"/>
+            <Setter Property="Margin" Value="0,0,2,0"/>
         </Style>
     </Window.Resources>
 
@@ -61,835 +104,410 @@
 
         <!-- Header -->
         <Border Grid.Row="0" Background="#2C3E50" Padding="20">
-            <StackPanel>
-                <TextBlock Text="IntervalToast Notification System"
-                           FontFamily="Segoe UI"
-                           FontSize="24"
-                           FontWeight="Bold"
-                           Foreground="White"
-                           HorizontalAlignment="Center"/>
-                <TextBlock Text="Phase 3: Enhanced Stacking and Advanced Management"
-                           FontFamily="Segoe UI"
-                           FontSize="14"
-                           Foreground="#BDC3C7"
-                           HorizontalAlignment="Center"
-                           Margin="0,5,0,0"/>
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="IntervalToast Configuration Dashboard"
+                               FontFamily="Segoe UI"
+                               FontSize="24"
+                               FontWeight="Bold"
+                               Foreground="White"/>
+                    <TextBlock Text="Phase 5: Advanced Configuration &amp; Management Interface"
+                               FontFamily="Segoe UI"
+                               FontSize="14"
+                               Foreground="#BDC3C7"
+                               Margin="0,5,0,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="MinimizeToTrayBtn"
+                            Content="Minimize to Tray"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Click="MinimizeToTrayBtn_Click"
+                            Margin="0,0,10,0"/>
+                    <Button x:Name="QuickTestBtn"
+                            Content="Quick Test"
+                            Style="{StaticResource ConfigButtonStyle}"
+                            Click="QuickTestBtn_Click"/>
+                </StackPanel>
+            </Grid>
         </Border>
 
-        <!-- Main content -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="20">
-            <StackPanel MaxWidth="600">
+        <!-- Main content with tab control -->
+        <TabControl Grid.Row="1" Margin="20" Background="Transparent" BorderThickness="0">
+            <TabControl.Resources>
+                <Style TargetType="TabItem" BasedOn="{StaticResource ConfigTabStyle}"/>
+            </TabControl.Resources>
 
-                <!-- Basic Notifications Section -->
-                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
+            <!-- Dashboard Tab -->
+            <TabItem Header="Dashboard" IsSelected="True">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
                     <StackPanel>
-                        <TextBlock Text="Basic Notifications"
-                                   FontFamily="Segoe UI"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Foreground="#2C3E50"
-                                   Margin="0,0,0,15"/>
 
-                        <WrapPanel Orientation="Horizontal">
-                            <Button x:Name="ShowDefaultBtn"
-                                    Content="Show Default Notification"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowDefaultBtn_Click"/>
-
-                            <Button x:Name="ShowCustomMessageBtn"
-                                    Content="Show Custom Message"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowCustomMessageBtn_Click"/>
-
-                            <Button x:Name="ShowMultipleBtn"
-                                    Content="Show Multiple Notifications"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowMultipleBtn_Click"/>
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Themed Notifications Section -->
-                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock Text="Themed Notifications"
-                                   FontFamily="Segoe UI"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Foreground="#2C3E50"
-                                   Margin="0,0,0,15"/>
-
-                        <WrapPanel Orientation="Horizontal">
-                            <Button x:Name="ShowLightThemeBtn"
-                                    Content="Light Theme"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowLightThemeBtn_Click"/>
-
-                            <Button x:Name="ShowDarkThemeBtn"
-                                    Content="Dark Theme"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowDarkThemeBtn_Click"/>
-
-                            <Button x:Name="ShowMinimalBtn"
-                                    Content="Minimal Style"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowMinimalBtn_Click"/>
-
-                            <Button x:Name="ShowLargeBtn"
-                                    Content="Large Notification"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowLargeBtn_Click"/>
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Animation Presets Section -->
-                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock Text="Animation Presets"
-                                   FontFamily="Segoe UI"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Foreground="#2C3E50"
-                                   Margin="0,0,0,15"/>
-
-                        <WrapPanel Orientation="Horizontal">
-                            <Button x:Name="ShowFastAnimationBtn"
-                                    Content="Fast Animation"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowFastAnimationBtn_Click"/>
-
-                            <Button x:Name="ShowNormalAnimationBtn"
-                                    Content="Normal Animation"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowNormalAnimationBtn_Click"/>
-
-                            <Button x:Name="ShowSmoothAnimationBtn"
-                                    Content="Smooth Animation"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowSmoothAnimationBtn_Click"/>
-
-                            <Button x:Name="ShowBounceAnimationBtn"
-                                    Content="Bounce Animation"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowBounceAnimationBtn_Click"/>
-
-                            <Button x:Name="ShowNoAnimationBtn"
-                                    Content="No Animation"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowNoAnimationBtn_Click"/>
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Entry/Exit Animation Testing Section -->
-                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock Text="Entry &amp; Exit Animations"
-                                   FontFamily="Segoe UI"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Foreground="#2C3E50"
-                                   Margin="0,0,0,15"/>
-
-                        <Grid Margin="0,0,0,15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Column="0"
-                                       Text="Entry:"
-                                       FontFamily="Segoe UI"
-                                       FontSize="14"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,10,0"/>
-
-                            <ComboBox x:Name="EntryAnimationComboBox"
-                                      Grid.Column="1"
-                                      Style="{StaticResource DemoComboBoxStyle}"
-                                      SelectedIndex="2">
-                                <ComboBoxItem Content="None"/>
-                                <ComboBoxItem Content="Fade In"/>
-                                <ComboBoxItem Content="Slide From Right"/>
-                                <ComboBoxItem Content="Slide From Left"/>
-                                <ComboBoxItem Content="Slide From Top"/>
-                                <ComboBoxItem Content="Slide From Bottom"/>
-                                <ComboBoxItem Content="Scale Up"/>
-                                <ComboBoxItem Content="Bounce In"/>
-                                <ComboBoxItem Content="Fly In"/>
-                            </ComboBox>
-
-                            <TextBlock Grid.Column="2"
-                                       Text="Exit:"
-                                       FontFamily="Segoe UI"
-                                       FontSize="14"
-                                       VerticalAlignment="Center"
-                                       Margin="20,0,10,0"/>
-
-                            <ComboBox x:Name="ExitAnimationComboBox"
-                                      Grid.Column="3"
-                                      Style="{StaticResource DemoComboBoxStyle}"
-                                      SelectedIndex="2">
-                                <ComboBoxItem Content="None"/>
-                                <ComboBoxItem Content="Fade Out"/>
-                                <ComboBoxItem Content="Slide To Right"/>
-                                <ComboBoxItem Content="Slide To Left"/>
-                                <ComboBoxItem Content="Slide To Top"/>
-                                <ComboBoxItem Content="Slide To Bottom"/>
-                                <ComboBoxItem Content="Scale Down"/>
-                                <ComboBoxItem Content="Bounce Out"/>
-                                <ComboBoxItem Content="Fly Out"/>
-                            </ComboBox>
-                        </Grid>
-
-                        <Button x:Name="TestCustomAnimationBtn"
-                                Content="Test Custom Animation"
-                                Style="{StaticResource DemoButtonStyle}"
-                                Click="TestCustomAnimationBtn_Click"
-                                HorizontalAlignment="Left"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- Progress Indicator Testing Section -->
-                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock Text="Progress Indicators"
-                                   FontFamily="Segoe UI"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Foreground="#2C3E50"
-                                   Margin="0,0,0,15"/>
-
-                        <Grid Margin="0,0,0,15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Column="0"
-                                       Text="Style:"
-                                       FontFamily="Segoe UI"
-                                       FontSize="14"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,10,0"/>
-
-                            <ComboBox x:Name="ProgressStyleComboBox"
-                                      Grid.Column="1"
-                                      Style="{StaticResource DemoComboBoxStyle}"
-                                      SelectedIndex="1">
-                                <ComboBoxItem Content="None"/>
-                                <ComboBoxItem Content="Bottom Bar"/>
-                                <ComboBoxItem Content="Top Bar"/>
-                                <ComboBoxItem Content="Circular Corner"/>
-                                <ComboBoxItem Content="Circular Center"/>
-                                <ComboBoxItem Content="Left Border"/>
-                                <ComboBoxItem Content="Right Border"/>
-                            </ComboBox>
-
-                            <Button x:Name="TestProgressBtn"
-                                    Grid.Column="2"
-                                    Content="Test Progress"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="TestProgressBtn_Click"/>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <!-- Visual Effects Section -->
-                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock Text="Visual Effects"
-                                   FontFamily="Segoe UI"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Foreground="#2C3E50"
-                                   Margin="0,0,0,15"/>
-
-                        <WrapPanel Orientation="Horizontal">
-                            <Button x:Name="ShowGlowEffectBtn"
-                                    Content="Glow Effect"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowGlowEffectBtn_Click"/>
-
-                            <Button x:Name="ShowBlurEffectBtn"
-                                    Content="Blur Effect"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowBlurEffectBtn_Click"/>
-
-                            <Button x:Name="ShowHoverEffectsBtn"
-                                    Content="Enhanced Hover"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowHoverEffectsBtn_Click"/>
-
-                            <Button x:Name="ShowCombinedEffectsBtn"
-                                    Content="Combined Effects"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowCombinedEffectsBtn_Click"/>
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Phase 3: Category and Priority Testing Section -->
-                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock Text="Category &amp; Priority Notifications"
-                                   FontFamily="Segoe UI"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Foreground="#2C3E50"
-                                   Margin="0,0,0,15"/>
-
-                        <WrapPanel Orientation="Horizontal">
-                            <Button x:Name="ShowInfoNotificationBtn"
-                                    Content="Info Notification"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Background="#4A90E2"
-                                    Click="ShowInfoNotificationBtn_Click"/>
-
-                            <Button x:Name="ShowSuccessNotificationBtn"
-                                    Content="Success Notification"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Background="#4CAF50"
-                                    Click="ShowSuccessNotificationBtn_Click"/>
-
-                            <Button x:Name="ShowWarningNotificationBtn"
-                                    Content="Warning Notification"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Background="#FF9800"
-                                    Click="ShowWarningNotificationBtn_Click"/>
-
-                            <Button x:Name="ShowErrorNotificationBtn"
-                                    Content="Error Notification"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Background="#F44336"
-                                    Click="ShowErrorNotificationBtn_Click"/>
-
-                            <Button x:Name="ShowSystemNotificationBtn"
-                                    Content="System Notification"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Background="#9E9E9E"
-                                    Click="ShowSystemNotificationBtn_Click"/>
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Phase 3: Priority Testing Section -->
-                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock Text="Priority Level Testing"
-                                   FontFamily="Segoe UI"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Foreground="#2C3E50"
-                                   Margin="0,0,0,15"/>
-
-                        <WrapPanel Orientation="Horizontal">
-                            <Button x:Name="ShowLowPriorityBtn"
-                                    Content="Low Priority"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Background="#9E9E9E"
-                                    Click="ShowLowPriorityBtn_Click"/>
-
-                            <Button x:Name="ShowNormalPriorityBtn"
-                                    Content="Normal Priority"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Background="#4A90E2"
-                                    Click="ShowNormalPriorityBtn_Click"/>
-
-                            <Button x:Name="ShowHighPriorityBtn"
-                                    Content="High Priority"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Background="#FF9800"
-                                    Click="ShowHighPriorityBtn_Click"/>
-
-                            <Button x:Name="ShowCriticalPriorityBtn"
-                                    Content="Critical Priority"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Background="#F44336"
-                                    Click="ShowCriticalPriorityBtn_Click"/>
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Phase 3: Advanced Stacking Testing Section -->
-                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock Text="Advanced Stacking &amp; Management"
-                                   FontFamily="Segoe UI"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Foreground="#2C3E50"
-                                   Margin="0,0,0,15"/>
-
-                        <WrapPanel Orientation="Horizontal">
-                            <Button x:Name="TestCompactModeBtn"
-                                    Content="Test Compact Mode"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="TestCompactModeBtn_Click"/>
-
-                            <Button x:Name="TestOverflowHandlingBtn"
-                                    Content="Test Overflow (10 notifications)"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="TestOverflowHandlingBtn_Click"/>
-
-                            <Button x:Name="TestPriorityOrderingBtn"
-                                    Content="Test Priority Ordering"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="TestPriorityOrderingBtn_Click"/>
-
-                            <Button x:Name="TestCategoryGroupingBtn"
-                                    Content="Test Category Grouping"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="TestCategoryGroupingBtn_Click"/>
-
-                            <Button x:Name="ShowQueueStatusBtn"
-                                    Content="Show Queue Status"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="ShowQueueStatusBtn_Click"/>
-
-                            <Button x:Name="ClearAllNotificationsBtn"
-                                    Content="Clear All Notifications"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Background="#F44336"
-                                    Click="ClearAllNotificationsBtn_Click"/>
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Position Testing Section -->
-                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock Text="Position Testing"
-                                   FontFamily="Segoe UI"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Foreground="#2C3E50"
-                                   Margin="0,0,0,15"/>
-
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Column="0"
-                                       Text="Position:"
-                                       FontFamily="Segoe UI"
-                                       FontSize="14"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,10,0"/>
-
-                            <ComboBox x:Name="PositionComboBox"
-                                      Grid.Column="1"
-                                      Style="{StaticResource DemoComboBoxStyle}"
-                                      SelectedIndex="2">
-                                <ComboBoxItem Content="Top Right"/>
-                                <ComboBoxItem Content="Top Left"/>
-                                <ComboBoxItem Content="Bottom Right"/>
-                                <ComboBoxItem Content="Bottom Left"/>
-                                <ComboBoxItem Content="Top Center"/>
-                                <ComboBoxItem Content="Bottom Center"/>
-                            </ComboBox>
-
-                            <Button x:Name="TestPositionBtn"
-                                    Grid.Column="2"
-                                    Content="Test Position"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Click="TestPositionBtn_Click"/>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <!-- Global Hotkey Configuration Section -->
-                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock Text="Global Hotkey Configuration"
-                                   FontFamily="Segoe UI"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Foreground="#2C3E50"
-                                   Margin="0,0,0,15"/>
-
-                        <!-- System Enable/Disable Toggle -->
-                        <Grid Margin="0,0,0,20">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <CheckBox x:Name="EnableHotkeysCheckBox"
-                                      Grid.Column="0"
-                                      Content="Enable Global Hotkeys"
-                                      FontFamily="Segoe UI"
-                                      FontSize="14"
-                                      FontWeight="SemiBold"
-                                      VerticalAlignment="Center"
-                                      IsChecked="True"
-                                      Checked="EnableHotkeysCheckBox_Changed"
-                                      Unchecked="EnableHotkeysCheckBox_Changed"/>
-
-                            <TextBlock x:Name="HotkeySystemStatusText"
-                                       Grid.Column="1"
-                                       Text="System Active"
-                                       FontFamily="Segoe UI"
-                                       FontSize="12"
-                                       Foreground="#27AE60"
-                                       VerticalAlignment="Center"
-                                       Margin="15,0,0,0"/>
-
-                            <Button x:Name="ResetHotkeysBtn"
-                                    Grid.Column="2"
-                                    Content="Reset to Defaults"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Background="#E67E22"
-                                    Click="ResetHotkeysBtn_Click"
-                                    Margin="0"/>
-                        </Grid>
-
-                        <!-- Hotkey Configuration Controls -->
-                        <GroupBox Header="Hotkey Assignments"
-                                  FontFamily="Segoe UI"
-                                  FontWeight="SemiBold"
-                                  FontSize="14"
-                                  Margin="0,0,0,15"
-                                  Padding="15">
+                        <!-- System Status Overview -->
+                        <Border Style="{StaticResource CardPanelStyle}">
                             <StackPanel>
+                                <TextBlock Text="System Status" Style="{StaticResource SectionHeaderStyle}"/>
 
-                                <!-- Dismiss All Notifications Hotkey -->
-                                <Grid Margin="0,0,0,10">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Column="0"
-                                               Text="Dismiss All:"
-                                               FontFamily="Segoe UI"
-                                               FontSize="12"
-                                               VerticalAlignment="Center"/>
-
-                                    <Border x:Name="DismissAllHotkeyBorder"
-                                            Grid.Column="1"
-                                            Background="#F8F9FA"
-                                            BorderBrush="#BDC3C7"
-                                            BorderThickness="1"
-                                            CornerRadius="4"
-                                            Padding="8,6"
-                                            Margin="5,0"
-                                            Cursor="Hand"
-                                            MouseLeftButtonDown="DismissAllHotkey_Click">
-                                        <TextBlock x:Name="DismissAllHotkeyText"
-                                                   Text="Ctrl + Shift + D"
-                                                   FontFamily="Segoe UI"
-                                                   FontSize="12"
-                                                   Foreground="#2C3E50"/>
+                                    <!-- Status Cards -->
+                                    <Border Grid.Row="0" Grid.Column="0" Background="#E8F5E8" CornerRadius="6" Padding="15" Margin="5">
+                                        <StackPanel>
+                                            <TextBlock x:Name="NotificationSystemStatusText" Text="System Active" FontWeight="Bold" Foreground="#27AE60" FontSize="14"/>
+                                            <TextBlock Text="Notification System" FontSize="12" Foreground="#555"/>
+                                        </StackPanel>
                                     </Border>
 
-                                    <Ellipse x:Name="DismissAllStatusIndicator"
-                                             Grid.Column="2"
-                                             Width="12"
-                                             Height="12"
-                                             Fill="#27AE60"
-                                             Margin="5,0"
-                                             ToolTip="Hotkey registered successfully"/>
-
-                                    <Button x:Name="TestDismissAllBtn"
-                                            Grid.Column="3"
-                                            Content="Test"
-                                            Style="{StaticResource DemoButtonStyle}"
-                                            Background="#3498DB"
-                                            FontSize="10"
-                                            Padding="8,4"
-                                            Margin="5,0"
-                                            Click="TestDismissAllBtn_Click"/>
-
-                                    <Button x:Name="EditDismissAllBtn"
-                                            Grid.Column="4"
-                                            Content="Edit"
-                                            Style="{StaticResource DemoButtonStyle}"
-                                            Background="#9B59B6"
-                                            FontSize="10"
-                                            Padding="8,4"
-                                            Margin="5,0,0,0"
-                                            Click="EditDismissAllBtn_Click"/>
-                                </Grid>
-
-                                <!-- Dismiss Latest Notification Hotkey -->
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <TextBlock Grid.Column="0"
-                                               Text="Dismiss Latest:"
-                                               FontFamily="Segoe UI"
-                                               FontSize="12"
-                                               VerticalAlignment="Center"/>
-
-                                    <Border x:Name="DismissLatestHotkeyBorder"
-                                            Grid.Column="1"
-                                            Background="#F8F9FA"
-                                            BorderBrush="#BDC3C7"
-                                            BorderThickness="1"
-                                            CornerRadius="4"
-                                            Padding="8,6"
-                                            Margin="5,0"
-                                            Cursor="Hand"
-                                            MouseLeftButtonDown="DismissLatestHotkey_Click">
-                                        <TextBlock x:Name="DismissLatestHotkeyText"
-                                                   Text="Ctrl + Shift + Esc"
-                                                   FontFamily="Segoe UI"
-                                                   FontSize="12"
-                                                   Foreground="#2C3E50"/>
+                                    <Border Grid.Row="0" Grid.Column="1" Background="#E8F4FD" CornerRadius="6" Padding="15" Margin="5">
+                                        <StackPanel>
+                                            <TextBlock x:Name="ActiveNotificationsText" Text="0 Active" FontWeight="Bold" Foreground="#3498DB" FontSize="14"/>
+                                            <TextBlock Text="Notifications" FontSize="12" Foreground="#555"/>
+                                        </StackPanel>
                                     </Border>
 
-                                    <Ellipse x:Name="DismissLatestStatusIndicator"
-                                             Grid.Column="2"
-                                             Width="12"
-                                             Height="12"
-                                             Fill="#27AE60"
-                                             Margin="5,0"
-                                             ToolTip="Hotkey registered successfully"/>
-
-                                    <Button x:Name="TestDismissLatestBtn"
-                                            Grid.Column="3"
-                                            Content="Test"
-                                            Style="{StaticResource DemoButtonStyle}"
-                                            Background="#3498DB"
-                                            FontSize="10"
-                                            Padding="8,4"
-                                            Margin="5,0"
-                                            Click="TestDismissLatestBtn_Click"/>
-
-                                    <Button x:Name="EditDismissLatestBtn"
-                                            Grid.Column="4"
-                                            Content="Edit"
-                                            Style="{StaticResource DemoButtonStyle}"
-                                            Background="#9B59B6"
-                                            FontSize="10"
-                                            Padding="8,4"
-                                            Margin="5,0,0,0"
-                                            Click="EditDismissLatestBtn_Click"/>
-                                </Grid>
-
-                                <!-- Toggle System Hotkey -->
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <TextBlock Grid.Column="0"
-                                               Text="Toggle System:"
-                                               FontFamily="Segoe UI"
-                                               FontSize="12"
-                                               VerticalAlignment="Center"/>
-
-                                    <Border x:Name="ToggleSystemHotkeyBorder"
-                                            Grid.Column="1"
-                                            Background="#F8F9FA"
-                                            BorderBrush="#BDC3C7"
-                                            BorderThickness="1"
-                                            CornerRadius="4"
-                                            Padding="8,6"
-                                            Margin="5,0"
-                                            Cursor="Hand"
-                                            MouseLeftButtonDown="ToggleSystemHotkey_Click">
-                                        <TextBlock x:Name="ToggleSystemHotkeyText"
-                                                   Text="Ctrl + Shift + P"
-                                                   FontFamily="Segoe UI"
-                                                   FontSize="12"
-                                                   Foreground="#2C3E50"/>
+                                    <Border Grid.Row="0" Grid.Column="2" Background="#FDF4E8" CornerRadius="6" Padding="15" Margin="5">
+                                        <StackPanel>
+                                            <TextBlock x:Name="QueuedNotificationsText" Text="0 Queued" FontWeight="Bold" Foreground="#F39C12" FontSize="14"/>
+                                            <TextBlock Text="In Queue" FontSize="12" Foreground="#555"/>
+                                        </StackPanel>
                                     </Border>
 
-                                    <Ellipse x:Name="ToggleSystemStatusIndicator"
-                                             Grid.Column="2"
-                                             Width="12"
-                                             Height="12"
-                                             Fill="#27AE60"
-                                             Margin="5,0"
-                                             ToolTip="Hotkey registered successfully"/>
-
-                                    <Button x:Name="TestToggleSystemBtn"
-                                            Grid.Column="3"
-                                            Content="Test"
-                                            Style="{StaticResource DemoButtonStyle}"
-                                            Background="#3498DB"
-                                            FontSize="10"
-                                            Padding="8,4"
-                                            Margin="5,0"
-                                            Click="TestToggleSystemBtn_Click"/>
-
-                                    <Button x:Name="EditToggleSystemBtn"
-                                            Grid.Column="4"
-                                            Content="Edit"
-                                            Style="{StaticResource DemoButtonStyle}"
-                                            Background="#9B59B6"
-                                            FontSize="10"
-                                            Padding="8,4"
-                                            Margin="5,0,0,0"
-                                            Click="EditToggleSystemBtn_Click"/>
+                                    <!-- Quick Actions -->
+                                    <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
+                                        <Button x:Name="DismissAllBtn" Content="Dismiss All" Style="{StaticResource DangerButtonStyle}" Click="DismissAllBtn_Click"/>
+                                        <Button x:Name="ShowQueueStatusBtn" Content="Queue Status" Style="{StaticResource ConfigButtonStyle}" Click="ShowQueueStatusBtn_Click"/>
+                                        <Button x:Name="ToggleSystemBtn" Content="Pause System" Style="{StaticResource SecondaryButtonStyle}" Click="ToggleSystemBtn_Click"/>
+                                    </StackPanel>
                                 </Grid>
-
-                                <!-- Show Queue Status Hotkey -->
-                                <Grid Margin="0,0,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <TextBlock Grid.Column="0"
-                                               Text="Show Queue Status:"
-                                               FontFamily="Segoe UI"
-                                               FontSize="12"
-                                               VerticalAlignment="Center"/>
-
-                                    <Border x:Name="ShowQueueStatusHotkeyBorder"
-                                            Grid.Column="1"
-                                            Background="#F8F9FA"
-                                            BorderBrush="#BDC3C7"
-                                            BorderThickness="1"
-                                            CornerRadius="4"
-                                            Padding="8,6"
-                                            Margin="5,0"
-                                            Cursor="Hand"
-                                            MouseLeftButtonDown="ShowQueueStatusHotkey_Click">
-                                        <TextBlock x:Name="ShowQueueStatusHotkeyText"
-                                                   Text="Ctrl + Shift + Q"
-                                                   FontFamily="Segoe UI"
-                                                   FontSize="12"
-                                                   Foreground="#2C3E50"/>
-                                    </Border>
-
-                                    <Ellipse x:Name="ShowQueueStatusStatusIndicator"
-                                             Grid.Column="2"
-                                             Width="12"
-                                             Height="12"
-                                             Fill="#27AE60"
-                                             Margin="5,0"
-                                             ToolTip="Hotkey registered successfully"/>
-
-                                    <Button x:Name="TestShowQueueStatusBtn"
-                                            Grid.Column="3"
-                                            Content="Test"
-                                            Style="{StaticResource DemoButtonStyle}"
-                                            Background="#3498DB"
-                                            FontSize="10"
-                                            Padding="8,4"
-                                            Margin="5,0"
-                                            Click="TestShowQueueStatusBtn_Click"/>
-
-                                    <Button x:Name="EditShowQueueStatusBtn"
-                                            Grid.Column="4"
-                                            Content="Edit"
-                                            Style="{StaticResource DemoButtonStyle}"
-                                            Background="#9B59B6"
-                                            FontSize="10"
-                                            Padding="8,4"
-                                            Margin="5,0,0,0"
-                                            Click="EditShowQueueStatusBtn_Click"/>
-                                </Grid>
-
                             </StackPanel>
-                        </GroupBox>
-
-                        <!-- Hotkey Configuration Status -->
-                        <Border Background="#F8F9FA"
-                                CornerRadius="4"
-                                Padding="10"
-                                Margin="0,0,0,15">
-                            <TextBlock x:Name="HotkeyConfigStatusText"
-                                       FontFamily="Consolas"
-                                       FontSize="11"
-                                       Foreground="#7F8C8D"
-                                       TextWrapping="Wrap"
-                                       Text="All hotkeys registered successfully. Click 'Edit' to change key combinations or use 'Test' to verify functionality."/>
                         </Border>
 
-                        <!-- Action Buttons -->
-                        <WrapPanel Orientation="Horizontal">
-                            <Button x:Name="TestAllHotkeysBtn"
-                                    Content="Test All Hotkeys"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Background="#16A085"
-                                    Click="TestAllHotkeysBtn_Click"/>
+                        <!-- Quick Test Section -->
+                        <Border Style="{StaticResource CardPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Quick Notification Tests" Style="{StaticResource SectionHeaderStyle}"/>
 
-                            <Button x:Name="RefreshHotkeyStatusBtn"
-                                    Content="Refresh Status"
-                                    Style="{StaticResource DemoButtonStyle}"
-                                    Background="#34495E"
-                                    Click="RefreshHotkeyStatusBtn_Click"/>
-                        </WrapPanel>
+                                <WrapPanel Orientation="Horizontal">
+                                    <Button x:Name="ShowInfoBtn" Content="Info" Style="{StaticResource ConfigButtonStyle}" Background="#17A2B8" Click="ShowInfoBtn_Click"/>
+                                    <Button x:Name="ShowSuccessBtn" Content="Success" Style="{StaticResource SuccessButtonStyle}" Click="ShowSuccessBtn_Click"/>
+                                    <Button x:Name="ShowWarningBtn" Content="Warning" Style="{StaticResource ConfigButtonStyle}" Background="#FFC107" Click="ShowWarningBtn_Click"/>
+                                    <Button x:Name="ShowErrorBtn" Content="Error" Style="{StaticResource DangerButtonStyle}" Click="ShowErrorBtn_Click"/>
+                                    <Button x:Name="ShowSystemBtn" Content="System" Style="{StaticResource SecondaryButtonStyle}" Click="ShowSystemBtn_Click"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Recent Activity -->
+                        <Border Style="{StaticResource CardPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Recent Activity" Style="{StaticResource SectionHeaderStyle}"/>
+                                <TextBlock x:Name="RecentActivityText" Text="No recent notifications" FontSize="12" Foreground="#666" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
 
                     </StackPanel>
-                </Border>
+                </ScrollViewer>
+            </TabItem>
 
-                <!-- System Information Section -->
-                <Border Background="White" CornerRadius="8" Padding="20">
+            <!-- Theme Editor Tab -->
+            <TabItem Header="Theme Editor">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
                     <StackPanel>
-                        <TextBlock Text="System Information"
-                                   FontFamily="Segoe UI"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Foreground="#2C3E50"
-                                   Margin="0,0,0,15"/>
+                        <Border Style="{StaticResource CardPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Visual Theme Configuration" Style="{StaticResource SectionHeaderStyle}"/>
 
-                        <TextBlock x:Name="SystemInfoTextBlock"
-                                   FontFamily="Consolas"
-                                   FontSize="12"
-                                   Foreground="#555"
-                                   Background="#F8F9FA"
-                                   Padding="10"
-                                   TextWrapping="Wrap"
-                                   Text="Loading system information..."/>
+                                <!-- Theme Presets -->
+                                <TextBlock Text="Quick Presets:" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <WrapPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                    <Button x:Name="ApplyLightThemeBtn" Content="Light Theme" Style="{StaticResource ConfigButtonStyle}" Click="ApplyLightThemeBtn_Click"/>
+                                    <Button x:Name="ApplyDarkThemeBtn" Content="Dark Theme" Style="{StaticResource SecondaryButtonStyle}" Click="ApplyDarkThemeBtn_Click"/>
+                                    <Button x:Name="ApplyMinimalThemeBtn" Content="Minimal" Style="{StaticResource ConfigButtonStyle}" Background="#6C757D" Click="ApplyMinimalThemeBtn_Click"/>
+                                </WrapPanel>
 
-                        <Button x:Name="RefreshSystemInfoBtn"
-                                Content="Refresh System Info"
-                                Style="{StaticResource DemoButtonStyle}"
-                                Click="RefreshSystemInfoBtn_Click"
-                                HorizontalAlignment="Left"
-                                Margin="0,10,0,0"/>
+                                <!-- Live Preview Area -->
+                                <TextBlock Text="Live Preview:" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <Border x:Name="ThemePreviewArea" Background="#F8F9FA" CornerRadius="6" Padding="20" Margin="0,0,0,20">
+                                    <StackPanel>
+                                        <TextBlock Text="Preview Area" FontSize="14" Foreground="#666"/>
+                                        <Button Content="Test Live Preview" Style="{StaticResource ConfigButtonStyle}" Click="TestLivePreviewBtn_Click" Margin="0,10,0,0" HorizontalAlignment="Left"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
-                </Border>
+                </ScrollViewer>
+            </TabItem>
 
-            </StackPanel>
-        </ScrollViewer>
+            <!-- Statistics Tab -->
+            <TabItem Header="Statistics">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel>
+                        <Border Style="{StaticResource CardPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Notification Analytics" Style="{StaticResource SectionHeaderStyle}"/>
+
+                                <!-- Statistics Overview -->
+                                <Grid Margin="0,0,0,20">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Row="0" Grid.Column="0" Background="#E8F5E8" CornerRadius="6" Padding="15" Margin="5">
+                                        <StackPanel>
+                                            <TextBlock x:Name="TotalNotificationsText" Text="0" FontWeight="Bold" Foreground="#27AE60" FontSize="24"/>
+                                            <TextBlock Text="Total Notifications" FontSize="12" Foreground="#555"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Grid.Row="0" Grid.Column="1" Background="#E8F4FD" CornerRadius="6" Padding="15" Margin="5">
+                                        <StackPanel>
+                                            <TextBlock x:Name="AverageDisplayTimeText" Text="0s" FontWeight="Bold" Foreground="#3498DB" FontSize="24"/>
+                                            <TextBlock Text="Average Display Time" FontSize="12" Foreground="#555"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Grid.Row="0" Grid.Column="2" Background="#FDF4E8" CornerRadius="6" Padding="15" Margin="5">
+                                        <StackPanel>
+                                            <TextBlock x:Name="MostActiveTimeText" Text="--:--" FontWeight="Bold" Foreground="#F39C12" FontSize="24"/>
+                                            <TextBlock Text="Most Active Hour" FontSize="12" Foreground="#555"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Category Breakdown -->
+                                    <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,15,0,0">
+                                        <TextBlock Text="Category Breakdown:" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                        <StackPanel x:Name="CategoryStatsPanel" Orientation="Vertical"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Button Content="Refresh Statistics" Style="{StaticResource ConfigButtonStyle}" Click="RefreshStatisticsBtn_Click" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Category Management Tab -->
+            <TabItem Header="Categories">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel>
+                        <Border Style="{StaticResource CardPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Notification Categories" Style="{StaticResource SectionHeaderStyle}"/>
+
+                                <!-- Category List -->
+                                <DataGrid x:Name="CategoryDataGrid"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          HeadersVisibility="Column"
+                                          GridLinesVisibility="Horizontal"
+                                          Margin="0,0,0,20">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Category" Binding="{Binding CategoryName}" Width="150"/>
+                                        <DataGridTextColumn Header="Default Timeout" Binding="{Binding DefaultTimeout}" Width="120"/>
+                                        <DataGridCheckBoxColumn Header="Auto Dismiss" Binding="{Binding AllowAutoDismiss}" Width="100"/>
+                                        <DataGridTextColumn Header="Icon" Binding="{Binding IconContent}" Width="80"/>
+                                        <DataGridTemplateColumn Header="Actions" Width="150">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Content="Edit" Style="{StaticResource ConfigButtonStyle}" Padding="8,4" FontSize="11" Margin="2"/>
+                                                        <Button Content="Test" Style="{StaticResource SuccessButtonStyle}" Padding="8,4" FontSize="11" Margin="2"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Add Category" Style="{StaticResource SuccessButtonStyle}" Click="AddCategoryBtn_Click"/>
+                                    <Button Content="Reset to Defaults" Style="{StaticResource DangerButtonStyle}" Click="ResetCategoriesBtn_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Advanced Settings Tab -->
+            <TabItem Header="Advanced">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel>
+
+                        <!-- Animation Settings -->
+                        <Border Style="{StaticResource CardPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Animation Configuration" Style="{StaticResource SectionHeaderStyle}"/>
+
+                                <Grid Margin="0,0,0,15">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Entry Animation:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <ComboBox x:Name="EntryAnimationComboBox" Grid.Row="0" Grid.Column="1" Margin="0,0,20,0">
+                                        <ComboBoxItem Content="None"/>
+                                        <ComboBoxItem Content="Fade In"/>
+                                        <ComboBoxItem Content="Slide From Right" IsSelected="True"/>
+                                        <ComboBoxItem Content="Slide From Left"/>
+                                        <ComboBoxItem Content="Scale Up"/>
+                                        <ComboBoxItem Content="Bounce In"/>
+                                    </ComboBox>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Exit Animation:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <ComboBox x:Name="ExitAnimationComboBox" Grid.Row="0" Grid.Column="3">
+                                        <ComboBoxItem Content="None"/>
+                                        <ComboBoxItem Content="Fade Out"/>
+                                        <ComboBoxItem Content="Slide To Right" IsSelected="True"/>
+                                        <ComboBoxItem Content="Slide To Left"/>
+                                        <ComboBoxItem Content="Scale Down"/>
+                                        <ComboBoxItem Content="Bounce Out"/>
+                                    </ComboBox>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Animation Speed:" VerticalAlignment="Center" Margin="0,15,10,0"/>
+                                    <ComboBox x:Name="AnimationSpeedComboBox" Grid.Row="1" Grid.Column="1" Margin="0,15,20,0">
+                                        <ComboBoxItem Content="Fast"/>
+                                        <ComboBoxItem Content="Normal" IsSelected="True"/>
+                                        <ComboBoxItem Content="Slow"/>
+                                        <ComboBoxItem Content="None"/>
+                                    </ComboBox>
+
+                                    <Button Grid.Row="1" Grid.Column="3" Content="Test Animation" Style="{StaticResource ConfigButtonStyle}" Click="TestAnimationBtn_Click" Margin="0,15,0,0" HorizontalAlignment="Left"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- System Behavior -->
+                        <Border Style="{StaticResource CardPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="System Behavior" Style="{StaticResource SectionHeaderStyle}"/>
+
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="300"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Maximum Visible Notifications:" VerticalAlignment="Center" Margin="0,5"/>
+                                    <Slider x:Name="MaxNotificationsSlider" Grid.Row="0" Grid.Column="1" Minimum="1" Maximum="10" Value="5" TickFrequency="1" IsSnapToTickEnabled="True" Margin="10,5"/>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Default Auto-Close Delay (seconds):" VerticalAlignment="Center" Margin="0,5"/>
+                                    <Slider x:Name="AutoCloseDelaySlider" Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="30" Value="5" TickFrequency="1" IsSnapToTickEnabled="True" Margin="10,5"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Notification Spacing (pixels):" VerticalAlignment="Center" Margin="0,5"/>
+                                    <Slider x:Name="NotificationSpacingSlider" Grid.Row="2" Grid.Column="1" Minimum="5" Maximum="50" Value="10" TickFrequency="5" IsSnapToTickEnabled="True" Margin="10,5"/>
+
+                                    <CheckBox Grid.Row="3" Grid.ColumnSpan="2" x:Name="EnableHoverPauseCheckBox" Content="Pause auto-close on mouse hover" IsChecked="True" Margin="0,15,0,5"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Settings Tab -->
+            <TabItem Header="Settings">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel>
+
+                        <!-- Application Settings -->
+                        <Border Style="{StaticResource CardPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Application Settings" Style="{StaticResource SectionHeaderStyle}"/>
+
+                                <StackPanel>
+                                    <CheckBox x:Name="StartWithWindowsCheckBox" Content="Start with Windows" Margin="0,5"/>
+                                    <CheckBox x:Name="MinimizeToTrayCheckBox" Content="Minimize to system tray" IsChecked="True" Margin="0,5"/>
+                                    <CheckBox x:Name="ShowConfigOnStartupCheckBox" Content="Show configuration on startup" Margin="0,5"/>
+                                    <CheckBox x:Name="CollectStatisticsCheckBox" Content="Collect usage statistics" IsChecked="True" Margin="0,5"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Data Management -->
+                        <Border Style="{StaticResource CardPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Data Management" Style="{StaticResource SectionHeaderStyle}"/>
+
+                                <WrapPanel Orientation="Horizontal">
+                                    <Button Content="Export Settings" Style="{StaticResource ConfigButtonStyle}" Click="ExportSettingsBtn_Click"/>
+                                    <Button Content="Import Settings" Style="{StaticResource SecondaryButtonStyle}" Click="ImportSettingsBtn_Click"/>
+                                    <Button Content="Reset to Defaults" Style="{StaticResource DangerButtonStyle}" Click="ResetSettingsBtn_Click"/>
+                                    <Button Content="Create Backup" Style="{StaticResource SuccessButtonStyle}" Click="CreateBackupBtn_Click"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+        </TabControl>
+
+
+
 
         <!-- Footer -->
         <Border Grid.Row="2" Background="#34495E" Padding="15">
-            <StackPanel>
-                <TextBlock Text="Phase 3 Implementation: Enhanced notification stacking and advanced management with category/priority system"
-                           FontFamily="Segoe UI"
-                           FontSize="12"
-                           Foreground="#BDC3C7"
-                           HorizontalAlignment="Center"/>
-                <TextBlock Text="Features: Category indicators, Priority ordering, Intelligent spacing, Overflow handling, Summary notifications, Queue management"
-                           FontFamily="Segoe UI"
-                           FontSize="10"
-                           Foreground="#95A5A6"
-                           HorizontalAlignment="Center"
-                           Margin="0,5,0,0"/>
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Phase 5 Implementation: Advanced Configuration Dashboard and Management Interface"
+                               FontFamily="Segoe UI"
+                               FontSize="12"
+                               Foreground="#BDC3C7"/>
+                    <TextBlock Text="Features: System tray integration, Theme editor, Statistics dashboard, Category management, Advanced settings"
+                               FontFamily="Segoe UI"
+                               FontSize="10"
+                               Foreground="#95A5A6"
+                               Margin="0,5,0,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="StatusText" Text="Ready" FontFamily="Segoe UI" FontSize="12" Foreground="#BDC3C7" Margin="0,0,20,0"/>
+                    <Button Content="About" Style="{StaticResource SecondaryButtonStyle}" Padding="12,6" FontSize="11" Click="AboutBtn_Click"/>
+                </StackPanel>
+            </Grid>
         </Border>
 
     </Grid>

@@ -1,1545 +1,752 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Forms;
-using System.Windows.Input;
-using System.Windows.Media;
+using System.Windows.Controls;
+using Microsoft.Win32;
 
 namespace IntervalToast
 {
     /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// Demo application for the IntervalToast notification system Phase 2 implementation.
-    /// Showcases comprehensive animation system with visual effects and progress indicators.
+    /// Main configuration dashboard for IntervalToast notification system
+    /// Phase 5 implementation featuring comprehensive configuration interface
     /// </summary>
     public partial class MainWindow : Window
     {
         #region Fields
 
-        private readonly WindowPositionManager _positionManager;
         private readonly NotificationManager _notificationManager;
         private readonly GlobalHotkeyManager _hotkeyManager;
-        private int _notificationCounter = 1;
+        private readonly SettingsManager _settingsManager;
+        private readonly SystemTrayManager? _systemTrayManager;
+        private bool _isMinimizedToTray = false;
+        private bool _suppressCloseToTray = false;
 
         #endregion
 
         #region Constructor
 
         /// <summary>
-        /// Initializes a new instance of the MainWindow class
+        /// Initializes a new instance of the MainWindow
         /// </summary>
         public MainWindow()
         {
             InitializeComponent();
-            _positionManager = new WindowPositionManager();
+
+            // Initialize core managers
+            _settingsManager = new SettingsManager();
             _notificationManager = NotificationManager.Instance;
             _hotkeyManager = GlobalHotkeyManager.Instance;
 
-            // Configure Phase 3 features
-            ConfigurePhase3Features();
+            // Initialize system tray manager
+            try
+            {
+                _systemTrayManager = new SystemTrayManager(_notificationManager, _hotkeyManager, _settingsManager);
+                _systemTrayManager.ShowConfigurationRequested += OnShowConfigurationRequested;
+                _systemTrayManager.ExitApplicationRequested += OnExitApplicationRequested;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to initialize system tray: {ex.Message}");
+            }
 
-            // Initialize global hotkey system
-            InitializeHotkeySystem();
+            // Load settings and initialize UI
+            InitializeConfiguration();
 
-            // Initialize system information on load
+            // Setup event handlers
             Loaded += MainWindow_Loaded;
         }
 
         #endregion
 
-        #region Window Events
+        #region Initialization
+
+        /// <summary>
+        /// Initializes configuration and applies settings
+        /// </summary>
+        private async void InitializeConfiguration()
+        {
+            try
+            {
+                // Load settings
+                await _settingsManager.LoadSettingsAsync();
+
+                // Apply configuration to notification manager
+                var config = _settingsManager.NotificationConfiguration;
+                _notificationManager.SetGlobalConfiguration(config);
+
+                // Subscribe to settings events
+                _settingsManager.SettingsLoaded += OnSettingsLoaded;
+                _settingsManager.SettingsSaved += OnSettingsSaved;
+                _settingsManager.SettingChanged += OnSettingChanged;
+
+                // Subscribe to notification manager events
+                _notificationManager.NotificationShown += OnNotificationShown;
+                _notificationManager.NotificationClosed += OnNotificationDismissed;
+
+                Debug.WriteLine("Configuration initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to initialize configuration: {ex.Message}");
+                ShowErrorMessage("Configuration Error", $"Failed to load settings: {ex.Message}");
+            }
+        }
 
         /// <summary>
         /// Handles the window loaded event
         /// </summary>
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            RefreshSystemInfo();
-            InitializeHotkeyUI();
+            // Initialize UI with current settings
+            UpdateUIFromSettings();
+            UpdateSystemStatus();
+            RefreshStatistics();
+            LoadCategoryData();
 
-            // Run comprehensive hotkey validation tests after a short delay
-            Dispatcher.BeginInvoke(async () =>
-            {
-                await Task.Delay(1000); // Wait for UI to fully initialize
-                RunHotkeyValidationTests();
-            });
+            // Show system tray notification
+            _systemTrayManager?.ShowTrayBalloon(
+                "IntervalToast Ready",
+                "Configuration dashboard is ready. System tray icon available.",
+                System.Windows.Forms.ToolTipIcon.Info,
+                3000);
         }
 
         #endregion
 
-        #region Hotkey System Initialization
+        #region Window State Management
 
         /// <summary>
-        /// Initializes the global hotkey system with event handlers
+        /// Handles window state changes for tray integration
         /// </summary>
-        private void InitializeHotkeySystem()
+        private void Window_StateChanged(object sender, EventArgs e)
         {
-            try
+            if (WindowState == WindowState.Minimized && _settingsManager.CurrentSettings.ApplicationPreferences.MinimizeToTray)
             {
-                // Subscribe to hotkey events
-                _hotkeyManager.HotkeyPressed += OnHotkeyPressed;
-                _hotkeyManager.HotkeyRegistered += OnHotkeyRegistered;
-                _hotkeyManager.HotkeyRegistrationFailed += OnHotkeyRegistrationFailed;
-                _hotkeyManager.SystemStateChanged += OnHotkeySystemStateChanged;
-
-                // Configure hotkey system
-                var config = new HotkeySystemConfiguration
-                {
-                    EnableGlobalHotkeys = true,
-                    ShowHotkeyErrors = true,
-                    AutoRetryFailedRegistrations = true,
-                    EnableLogging = true
-                };
-                _hotkeyManager.SetSystemConfiguration(config);
-
-                System.Diagnostics.Debug.WriteLine("Global hotkey system initialized successfully");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error initializing hotkey system: {ex.Message}");
+                MinimizeToSystemTray();
             }
         }
 
         /// <summary>
-        /// Handles hotkey press events
+        /// Handles window closing to support minimize to tray
         /// </summary>
-        private void OnHotkeyPressed(object? sender, HotkeyEventArgs e)
+        private void Window_Closing(object sender, CancelEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine($"Hotkey pressed: {e.Hotkey.DisplayName}");
-
-            // Show feedback notification
-            var data = NotificationData.CreateSystem(
-                "Hotkey Activated",
-                $"Executed: {e.Hotkey.Description}"
-            );
-            _notificationManager.ShowNotification(data);
-        }
-
-        /// <summary>
-        /// Handles successful hotkey registration
-        /// </summary>
-        private void OnHotkeyRegistered(object? sender, HotkeyEventArgs e)
-        {
-            System.Diagnostics.Debug.WriteLine($"Hotkey registered successfully: {e.Hotkey.DisplayName}");
-
-            // Update UI to reflect successful registration
-            Dispatcher.BeginInvoke(() => RefreshHotkeyStatus());
-        }
-
-        /// <summary>
-        /// Handles hotkey registration failures
-        /// </summary>
-        private void OnHotkeyRegistrationFailed(object? sender, HotkeyRegistrationFailedEventArgs e)
-        {
-            System.Diagnostics.Debug.WriteLine($"Hotkey registration failed: {e.Hotkey.DisplayName} - {e.Exception.Message}");
-
-            // Update UI to reflect failed registration
-            Dispatcher.BeginInvoke(() => RefreshHotkeyStatus());
-        }
-
-        /// <summary>
-        /// Handles hotkey system state changes
-        /// </summary>
-        private void OnHotkeySystemStateChanged(object? sender, HotkeySystemStateChangedEventArgs e)
-        {
-            System.Diagnostics.Debug.WriteLine($"Hotkey system state changed: {(e.IsEnabled ? "Enabled" : "Disabled")}");
-
-            // Update UI to reflect system state change
-            Dispatcher.BeginInvoke(() => UpdateHotkeySystemStatus());
-
-            var data = NotificationData.CreateInfo(
-                "Hotkey System",
-                $"Global hotkeys are now {(e.IsEnabled ? "enabled" : "disabled")}"
-            );
-            _notificationManager.ShowNotification(data);
-        }
-
-        #endregion
-
-        #region Basic Notification Event Handlers
-
-        /// <summary>
-        /// Shows a default notification
-        /// </summary>
-        private void ShowDefaultBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDefault();
-            var notification = new NotificationWindow(config);
-
-            notification.ShowNotification(
-                "Interval Reminder",
-                "This is a default notification with standard styling and behavior."
-            );
-        }
-
-        /// <summary>
-        /// Shows a notification with custom message
-        /// </summary>
-        private void ShowCustomMessageBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDefault();
-            var notification = new NotificationWindow(config);
-
-            notification.ShowNotification(
-                $"Custom Message #{_notificationCounter}",
-                $"This is custom notification number {_notificationCounter}. It demonstrates the ability to show personalized content with different titles and messages."
-            );
-
-            _notificationCounter++;
-        }
-
-        /// <summary>
-        /// Shows multiple notifications to test vertical stacking
-        /// </summary>
-        private void ShowMultipleBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var messages = new[]
+            if (!_suppressCloseToTray && _settingsManager.CurrentSettings.ApplicationPreferences.MinimizeToTray)
             {
-                ("First Notification", "This is the first notification in the vertical stack."),
-                ("Second Notification", "This is the second notification, positioned vertically below the first."),
-                ("Third Notification", "This is the third notification, demonstrating proper vertical stacking behavior."),
-                ("Fourth Notification", "This is the fourth notification, continuing the vertical stack."),
-                ("Fifth Notification", "This is the fifth notification, completing the vertical stack.")
-            };
-
-            foreach (var (title, message) in messages)
-            {
-                var data = new NotificationData
-                {
-                    Title = title,
-                    Message = message,
-                    Category = NotificationCategory.Info,
-                    Priority = NotificationPriority.Normal
-                };
-                _notificationManager.ShowNotification(data);
-
-                // Small delay to demonstrate stacking
-                System.Threading.Thread.Sleep(300);
-            }
-        }
-
-        #endregion
-
-        #region Themed Notification Event Handlers
-
-        /// <summary>
-        /// Shows a light theme notification
-        /// </summary>
-        private void ShowLightThemeBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateLightTheme();
-            var notification = new NotificationWindow(config);
-
-            notification.ShowNotification(
-                "Light Theme",
-                "This notification uses the light theme configuration with bright, clean colors."
-            );
-        }
-
-        /// <summary>
-        /// Shows a dark theme notification
-        /// </summary>
-        private void ShowDarkThemeBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDarkTheme();
-            var notification = new NotificationWindow(config);
-
-            notification.ShowNotification(
-                "Dark Theme",
-                "This notification uses the dark theme configuration with darker colors and improved contrast."
-            );
-        }
-
-        /// <summary>
-        /// Shows a minimal style notification
-        /// </summary>
-        private void ShowMinimalBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateMinimal();
-            var notification = new NotificationWindow(config);
-
-            notification.ShowNotification(
-                "Minimal Style",
-                "Compact notification with minimal styling."
-            );
-        }
-
-        /// <summary>
-        /// Shows a large notification
-        /// </summary>
-        private void ShowLargeBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateLarge();
-            var notification = new NotificationWindow(config);
-
-            notification.ShowNotification(
-                "Large Notification",
-                "This is a larger notification with increased dimensions and font sizes. It's perfect for important messages that need more visibility and space for longer content."
-            );
-        }
-
-        #endregion
-
-        #region Position Testing Event Handlers
-
-        /// <summary>
-        /// Tests notification positioning based on the selected position
-        /// </summary>
-        private void TestPositionBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var selectedPosition = GetSelectedPosition();
-            var config = NotificationConfiguration.CreateDefault();
-            config.Position = selectedPosition;
-
-            var notification = new NotificationWindow(config);
-
-            notification.ShowNotification(
-                $"Position Test: {selectedPosition}",
-                $"This notification is positioned at {selectedPosition}. It demonstrates the multi-monitor positioning system."
-            );
-        }
-
-        /// <summary>
-        /// Gets the selected position from the combo box
-        /// </summary>
-        private NotificationPosition GetSelectedPosition()
-        {
-            return PositionComboBox.SelectedIndex switch
-            {
-                0 => NotificationPosition.TopRight,
-                1 => NotificationPosition.TopLeft,
-                2 => NotificationPosition.BottomRight,
-                3 => NotificationPosition.BottomLeft,
-                4 => NotificationPosition.TopCenter,
-                5 => NotificationPosition.BottomCenter,
-                _ => NotificationPosition.BottomRight
-            };
-        }
-
-        #endregion
-
-        #region System Information Event Handlers
-
-        /// <summary>
-        /// Refreshes the system information display
-        /// </summary>
-        private void RefreshSystemInfoBtn_Click(object sender, RoutedEventArgs e)
-        {
-            RefreshSystemInfo();
-        }
-
-        /// <summary>
-        /// Updates the system information display
-        /// </summary>
-        private void RefreshSystemInfo()
-        {
-            try
-            {
-                var screens = _positionManager.GetAllScreens();
-                var primaryScreen = Screen.PrimaryScreen;
-                var currentScreen = _positionManager.GetTargetScreen();
-
-                var info = new StringBuilder();
-                info.AppendLine("=== DISPLAY CONFIGURATION ===");
-                info.AppendLine($"Total Screens: {screens.Length}");
-                info.AppendLine();
-
-                for (int i = 0; i < screens.Length; i++)
-                {
-                    var screen = screens[i];
-                    var isPrimary = screen.Primary;
-                    var isCurrent = screen.Equals(currentScreen);
-
-                    info.AppendLine($"Screen {i + 1}:{(isPrimary ? " [PRIMARY]" : "")}{(isCurrent ? " [CURRENT]" : "")}");
-                    info.AppendLine($"  Bounds: {screen.Bounds.Width}x{screen.Bounds.Height} at ({screen.Bounds.X}, {screen.Bounds.Y})");
-                    info.AppendLine($"  Working Area: {screen.WorkingArea.Width}x{screen.WorkingArea.Height} at ({screen.WorkingArea.X}, {screen.WorkingArea.Y})");
-                    info.AppendLine($"  Device Name: {screen.DeviceName}");
-                    info.AppendLine();
-                }
-
-                info.AppendLine("=== NOTIFICATION SYSTEM STATUS ===");
-                info.AppendLine($"Current Target Screen: {Array.IndexOf(screens, currentScreen) + 1}");
-                info.AppendLine($"Working Area Available: {currentScreen.WorkingArea.Width}x{currentScreen.WorkingArea.Height}");
-                info.AppendLine($"Taskbar Height: {currentScreen.Bounds.Height - currentScreen.WorkingArea.Height}px");
-
-                SystemInfoTextBlock.Text = info.ToString();
-            }
-            catch (Exception ex)
-            {
-                SystemInfoTextBlock.Text = $"Error retrieving system information: {ex.Message}";
-            }
-        }
-
-        #endregion
-
-        #region Animation Preset Event Handlers
-
-        /// <summary>
-        /// Shows a notification with fast animation preset
-        /// </summary>
-        private void ShowFastAnimationBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDefault();
-            config.ApplyAnimationPreset(AnimationPreset.Fast);
-
-            var notification = new NotificationWindow(config);
-            notification.ShowNotification(
-                "Fast Animation",
-                "This notification uses the Fast animation preset with quick transitions and minimal effects."
-            );
-        }
-
-        /// <summary>
-        /// Shows a notification with normal animation preset
-        /// </summary>
-        private void ShowNormalAnimationBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDefault();
-            config.ApplyAnimationPreset(AnimationPreset.Normal);
-
-            var notification = new NotificationWindow(config);
-            notification.ShowNotification(
-                "Normal Animation",
-                "This notification uses the Normal animation preset with balanced timing and smooth effects."
-            );
-        }
-
-        /// <summary>
-        /// Shows a notification with smooth animation preset
-        /// </summary>
-        private void ShowSmoothAnimationBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDefault();
-            config.ApplyAnimationPreset(AnimationPreset.Smooth);
-
-            var notification = new NotificationWindow(config);
-            notification.ShowNotification(
-                "Smooth Animation",
-                "This notification uses the Smooth animation preset with enhanced visual effects and gentle timing."
-            );
-        }
-
-        /// <summary>
-        /// Shows a notification with bounce animation
-        /// </summary>
-        private void ShowBounceAnimationBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDefault();
-            config.EntryAnimation = EntryAnimationType.BounceIn;
-            config.ExitAnimation = ExitAnimationType.BounceOut;
-            config.EasingFunction = AnimationEasing.Bounce;
-
-            var notification = new NotificationWindow(config);
-            notification.ShowNotification(
-                "Bounce Animation",
-                "This notification demonstrates bounce animations with elastic effects for a playful feel."
-            );
-        }
-
-        /// <summary>
-        /// Shows a notification with no animations
-        /// </summary>
-        private void ShowNoAnimationBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDefault();
-            config.ApplyAnimationPreset(AnimationPreset.None);
-
-            var notification = new NotificationWindow(config);
-            notification.ShowNotification(
-                "No Animation",
-                "This notification appears instantly without any animations for immediate visibility."
-            );
-        }
-
-        #endregion
-
-        #region Custom Animation Event Handlers
-
-        /// <summary>
-        /// Tests custom animation combinations
-        /// </summary>
-        private void TestCustomAnimationBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDefault();
-
-            // Get selected entry animation
-            config.EntryAnimation = GetSelectedEntryAnimation();
-
-            // Get selected exit animation
-            config.ExitAnimation = GetSelectedExitAnimation();
-
-            // Set custom timing
-            config.AnimationDuration = TimeSpan.FromMilliseconds(600);
-            config.EasingFunction = AnimationEasing.EaseInOut;
-
-            var notification = new NotificationWindow(config);
-            notification.ShowNotification(
-                $"Custom Animation Test",
-                $"Entry: {config.EntryAnimation}, Exit: {config.ExitAnimation}. This demonstrates custom animation combinations."
-            );
-        }
-
-        /// <summary>
-        /// Gets the selected entry animation from the combo box
-        /// </summary>
-        private EntryAnimationType GetSelectedEntryAnimation()
-        {
-            return EntryAnimationComboBox.SelectedIndex switch
-            {
-                0 => EntryAnimationType.None,
-                1 => EntryAnimationType.FadeIn,
-                2 => EntryAnimationType.SlideFromRight,
-                3 => EntryAnimationType.SlideFromLeft,
-                4 => EntryAnimationType.SlideFromTop,
-                5 => EntryAnimationType.SlideFromBottom,
-                6 => EntryAnimationType.ScaleUp,
-                7 => EntryAnimationType.BounceIn,
-                8 => EntryAnimationType.FlyIn,
-                _ => EntryAnimationType.SlideFromRight
-            };
-        }
-
-        /// <summary>
-        /// Gets the selected exit animation from the combo box
-        /// </summary>
-        private ExitAnimationType GetSelectedExitAnimation()
-        {
-            return ExitAnimationComboBox.SelectedIndex switch
-            {
-                0 => ExitAnimationType.None,
-                1 => ExitAnimationType.FadeOut,
-                2 => ExitAnimationType.SlideToRight,
-                3 => ExitAnimationType.SlideToLeft,
-                4 => ExitAnimationType.SlideToTop,
-                5 => ExitAnimationType.SlideToBottom,
-                6 => ExitAnimationType.ScaleDown,
-                7 => ExitAnimationType.BounceOut,
-                8 => ExitAnimationType.FlyOut,
-                _ => ExitAnimationType.SlideToRight
-            };
-        }
-
-        #endregion
-
-        #region Progress Indicator Event Handlers
-
-        /// <summary>
-        /// Tests progress indicator with selected style
-        /// </summary>
-        private void TestProgressBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDefault();
-            config.ProgressStyle = GetSelectedProgressStyle();
-            config.ShowProgressIndicator = config.ProgressStyle != ProgressIndicatorStyle.None;
-            config.AutoCloseDelay = TimeSpan.FromSeconds(8); // Longer delay to see progress
-
-            var notification = new NotificationWindow(config);
-            notification.ShowNotification(
-                "Progress Indicator Test",
-                $"This notification demonstrates the {config.ProgressStyle} progress indicator. Watch the progress animation!"
-            );
-        }
-
-        /// <summary>
-        /// Gets the selected progress style from the combo box
-        /// </summary>
-        private ProgressIndicatorStyle GetSelectedProgressStyle()
-        {
-            return ProgressStyleComboBox.SelectedIndex switch
-            {
-                0 => ProgressIndicatorStyle.None,
-                1 => ProgressIndicatorStyle.BottomBar,
-                2 => ProgressIndicatorStyle.TopBar,
-                3 => ProgressIndicatorStyle.CircularCorner,
-                4 => ProgressIndicatorStyle.CircularCenter,
-                5 => ProgressIndicatorStyle.LeftBorder,
-                6 => ProgressIndicatorStyle.RightBorder,
-                _ => ProgressIndicatorStyle.BottomBar
-            };
-        }
-
-        #endregion
-
-        #region Visual Effects Event Handlers
-
-        /// <summary>
-        /// Shows a notification with glow effect
-        /// </summary>
-        private void ShowGlowEffectBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDefault();
-            config.EnableVisualEffects = true;
-            config.GlowIntensity = 0.8;
-            config.EntryAnimation = EntryAnimationType.ScaleUp;
-            config.EasingFunction = AnimationEasing.Back;
-
-            var notification = new NotificationWindow(config);
-            notification.ShowNotification(
-                "Glow Effect",
-                "This notification features a beautiful glow effect that enhances visibility and creates visual appeal."
-            );
-        }
-
-        /// <summary>
-        /// Shows a notification with blur effect
-        /// </summary>
-        private void ShowBlurEffectBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDefault();
-            config.EnableVisualEffects = true;
-            config.BlurRadius = 3.0;
-            config.EntryAnimation = EntryAnimationType.FadeIn;
-            config.AnimationDuration = TimeSpan.FromMilliseconds(800);
-
-            var notification = new NotificationWindow(config);
-            notification.ShowNotification(
-                "Blur Effect",
-                "This notification demonstrates a subtle blur effect that creates depth and modern visual styling."
-            );
-        }
-
-        /// <summary>
-        /// Shows a notification with enhanced hover effects
-        /// </summary>
-        private void ShowHoverEffectsBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDefault();
-            config.EnableHoverEffects = true;
-            config.HoverScaleFactor = 1.05;
-            config.EnableVisualEffects = true;
-            config.AutoCloseDelay = TimeSpan.FromSeconds(10); // Longer to test hover
-
-            var notification = new NotificationWindow(config);
-            notification.ShowNotification(
-                "Enhanced Hover Effects",
-                "This notification has enhanced hover effects. Try hovering over it to see the smooth scaling and visual changes!"
-            );
-        }
-
-        /// <summary>
-        /// Shows a notification with combined visual effects
-        /// </summary>
-        private void ShowCombinedEffectsBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = NotificationConfiguration.CreateDefault();
-            config.EnableVisualEffects = true;
-            config.GlowIntensity = 0.6;
-            config.BlurRadius = 2.0;
-            config.EnableHoverEffects = true;
-            config.HoverScaleFactor = 1.03;
-            config.EntryAnimation = EntryAnimationType.FlyIn;
-            config.ExitAnimation = ExitAnimationType.FlyOut;
-            config.EasingFunction = AnimationEasing.Elastic;
-            config.AnimationDuration = TimeSpan.FromMilliseconds(700);
-            config.ShowProgressIndicator = true;
-            config.ProgressStyle = ProgressIndicatorStyle.CircularCorner;
-
-            var notification = new NotificationWindow(config);
-            notification.ShowNotification(
-                "Combined Effects Showcase",
-                "This notification combines glow, blur, hover effects, flying animations, and progress indicators for the ultimate visual experience!"
-            );
-        }
-
-        #endregion
-
-        #region Phase 3: Configuration and Category/Priority Event Handlers
-
-        /// <summary>
-        /// Configures Phase 3 advanced features
-        /// </summary>
-        private void ConfigurePhase3Features()
-        {
-            var config = NotificationConfiguration.CreateDefault();
-
-            // Enable Phase 3 features
-            config.EnablePriorityOrdering = true;
-            config.EnableIntelligentSpacing = true;
-            config.EnableDynamicSizing = true;
-            config.EnableSmartPositioning = true;
-            config.EnableCompactMode = true;
-            config.CompactModeThreshold = 3;
-            config.EnableSummaryNotifications = true;
-            config.MaxVisibleNotifications = 5;
-            config.ShowCategoryIndicators = true;
-            config.ShowPriorityIndicators = true;
-            config.EnableOverflowIndicators = true;
-
-            _notificationManager.SetGlobalConfiguration(config);
-        }
-
-        /// <summary>
-        /// Shows an info notification
-        /// </summary>
-        private void ShowInfoNotificationBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var data = NotificationData.CreateInfo(
-                "Information",
-                "This is an informational notification with standard blue styling and info icon."
-            );
-            _notificationManager.ShowNotification(data);
-        }
-
-        /// <summary>
-        /// Shows a success notification
-        /// </summary>
-        private void ShowSuccessNotificationBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var data = NotificationData.CreateSuccess(
-                "Success",
-                "Operation completed successfully! This uses green styling and success icon."
-            );
-            _notificationManager.ShowNotification(data);
-        }
-
-        /// <summary>
-        /// Shows a warning notification
-        /// </summary>
-        private void ShowWarningNotificationBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var data = NotificationData.CreateWarning(
-                "Warning",
-                "This is a warning notification that requires attention. Uses orange styling."
-            );
-            _notificationManager.ShowNotification(data);
-        }
-
-        /// <summary>
-        /// Shows an error notification
-        /// </summary>
-        private void ShowErrorNotificationBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var data = NotificationData.CreateError(
-                "Error",
-                "An error has occurred! This critical notification requires manual dismissal."
-            );
-            _notificationManager.ShowNotification(data);
-        }
-
-        /// <summary>
-        /// Shows a system notification
-        /// </summary>
-        private void ShowSystemNotificationBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var data = NotificationData.CreateSystem(
-                "System Update",
-                "System maintenance will begin in 5 minutes. Please save your work."
-            );
-            _notificationManager.ShowNotification(data);
-        }
-
-        /// <summary>
-        /// Shows a low priority notification
-        /// </summary>
-        private void ShowLowPriorityBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var data = new NotificationData
-            {
-                Title = "Low Priority",
-                Message = "This is a low priority notification that appears at the bottom of the stack.",
-                Category = NotificationCategory.Info,
-                Priority = NotificationPriority.Low
-            };
-            _notificationManager.ShowNotification(data);
-        }
-
-        /// <summary>
-        /// Shows a normal priority notification
-        /// </summary>
-        private void ShowNormalPriorityBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var data = new NotificationData
-            {
-                Title = "Normal Priority",
-                Message = "This is a normal priority notification with standard behavior.",
-                Category = NotificationCategory.Info,
-                Priority = NotificationPriority.Normal
-            };
-            _notificationManager.ShowNotification(data);
-        }
-
-        /// <summary>
-        /// Shows a high priority notification
-        /// </summary>
-        private void ShowHighPriorityBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var data = new NotificationData
-            {
-                Title = "High Priority",
-                Message = "This is a high priority notification that appears higher in the stack with priority indicator.",
-                Category = NotificationCategory.Warning,
-                Priority = NotificationPriority.High
-            };
-            _notificationManager.ShowNotification(data);
-        }
-
-        /// <summary>
-        /// Shows a critical priority notification
-        /// </summary>
-        private void ShowCriticalPriorityBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var data = new NotificationData
-            {
-                Title = "Critical Priority",
-                Message = "This is a critical notification that appears at the top and requires manual dismissal.",
-                Category = NotificationCategory.Error,
-                Priority = NotificationPriority.Critical
-            };
-            _notificationManager.ShowNotification(data);
-        }
-
-        /// <summary>
-        /// Tests compact mode with multiple notifications
-        /// </summary>
-        private void TestCompactModeBtn_Click(object sender, RoutedEventArgs e)
-        {
-            // Show enough notifications to trigger compact mode
-            for (int i = 1; i <= 5; i++)
-            {
-                var data = new NotificationData
-                {
-                    Title = $"Compact Mode Test {i}",
-                    Message = $"This is notification {i} of 5. When 3+ notifications are shown, they should automatically use compact mode.",
-                    Category = (NotificationCategory)(i % 5),
-                    Priority = NotificationPriority.Normal
-                };
-                _notificationManager.ShowNotification(data);
-
-                // Small delay to demonstrate stacking
-                System.Threading.Thread.Sleep(200);
-            }
-        }
-
-        /// <summary>
-        /// Tests overflow handling with many notifications
-        /// </summary>
-        private void TestOverflowHandlingBtn_Click(object sender, RoutedEventArgs e)
-        {
-            // Show more notifications than the max visible limit
-            for (int i = 1; i <= 10; i++)
-            {
-                var data = new NotificationData
-                {
-                    Title = $"Overflow Test {i}",
-                    Message = $"This is notification {i} of 10. Notifications beyond the limit should be queued.",
-                    Category = (NotificationCategory)(i % 5),
-                    Priority = (NotificationPriority)((i % 4) + 1)
-                };
-                _notificationManager.ShowNotification(data);
-            }
-        }
-
-        /// <summary>
-        /// Tests priority ordering with mixed priority notifications
-        /// </summary>
-        private void TestPriorityOrderingBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var notifications = new[]
-            {
-                ("Low Priority First", NotificationPriority.Low),
-                ("Critical Priority", NotificationPriority.Critical),
-                ("Normal Priority", NotificationPriority.Normal),
-                ("High Priority", NotificationPriority.High),
-                ("Another Low", NotificationPriority.Low),
-                ("Another Critical", NotificationPriority.Critical)
-            };
-
-            foreach (var (title, priority) in notifications)
-            {
-                var data = new NotificationData
-                {
-                    Title = title,
-                    Message = $"This {priority} notification should be ordered by priority (Critical > High > Normal > Low).",
-                    Category = NotificationCategory.Info,
-                    Priority = priority
-                };
-                _notificationManager.ShowNotification(data);
-
-                System.Threading.Thread.Sleep(300);
-            }
-        }
-
-        /// <summary>
-        /// Tests category grouping with different categories
-        /// </summary>
-        private void TestCategoryGroupingBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var config = _notificationManager.GetGlobalConfiguration();
-            config.EnableCategoryGrouping = true;
-            _notificationManager.SetGlobalConfiguration(config);
-
-            var categories = new[]
-            {
-                NotificationCategory.Error,
-                NotificationCategory.Warning,
-                NotificationCategory.Info,
-                NotificationCategory.Success,
-                NotificationCategory.System
-            };
-
-            foreach (var category in categories)
-            {
-                var data = new NotificationData
-                {
-                    Title = $"{category} Notification",
-                    Message = $"This is a {category.ToString().ToLower()} notification with category grouping enabled.",
-                    Category = category,
-                    Priority = NotificationPriority.Normal
-                };
-                _notificationManager.ShowNotification(data);
-
-                System.Threading.Thread.Sleep(200);
-            }
-        }
-
-        /// <summary>
-        /// Shows current queue status
-        /// </summary>
-        private void ShowQueueStatusBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var status = _notificationManager.GetQueueStatus();
-            var activeNotifications = _notificationManager.GetActiveNotifications();
-            var pendingNotifications = _notificationManager.GetPendingNotifications();
-
-            var message = $"Active: {status.ActiveCount}/{status.MaxVisible}, " +
-                         $"Pending: {status.PendingCount}/{status.MaxQueue}, " +
-                         $"Total: {status.TotalCount}, " +
-                         $"Overflowing: {(status.IsOverflowing ? "Yes" : "No")}";
-
-            if (activeNotifications.Count > 0)
-            {
-                message += "\n\nActive by category:";
-                var categoryCounts = activeNotifications.GroupBy(n => n.Category)
-                    .ToDictionary(g => g.Key, g => g.Count());
-                foreach (var (category, count) in categoryCounts)
-                {
-                    message += $"\n- {category}: {count}";
-                }
-            }
-
-            var statusData = new NotificationData
-            {
-                Title = "Queue Status",
-                Message = message,
-                Category = NotificationCategory.System,
-                Priority = NotificationPriority.Normal
-            };
-            _notificationManager.ShowNotification(statusData);
-        }
-
-        /// <summary>
-        /// Tests vertical stacking and repositioning animations
-        /// </summary>
-        private void TestVerticalStackingBtn_Click(object sender, RoutedEventArgs e)
-        {
-            // Show 4 notifications to test vertical stacking
-            for (int i = 1; i <= 4; i++)
-            {
-                var data = new NotificationData
-                {
-                    Title = $"Stacking Test {i}",
-                    Message = $"This is notification {i}. Dismiss any notification to see repositioning animations.",
-                    Category = (NotificationCategory)((i - 1) % 5),
-                    Priority = NotificationPriority.Normal,
-                    CustomTimeout = TimeSpan.FromSeconds(15) // Longer timeout for testing
-                };
-                _notificationManager.ShowNotification(data);
-                System.Threading.Thread.Sleep(200);
-            }
-
-            // Show instructions
-            var instructionData = new NotificationData
-            {
-                Title = "Vertical Stacking Test",
-                Message = "4 notifications are now stacked vertically. Try dismissing any notification to see smooth repositioning!",
-                Category = NotificationCategory.System,
-                Priority = NotificationPriority.High,
-                CustomTimeout = TimeSpan.FromSeconds(8)
-            };
-            _notificationManager.ShowNotification(instructionData);
-        }
-
-        /// <summary>
-        /// Clears all notifications
-        /// </summary>
-        private void ClearAllNotificationsBtn_Click(object sender, RoutedEventArgs e)
-        {
-            _notificationManager.CloseAllNotifications();
-
-            // Show confirmation
-            var data = new NotificationData
-            {
-                Title = "Cleared",
-                Message = "All notifications have been cleared from the queue and display.",
-                Category = NotificationCategory.Success,
-                Priority = NotificationPriority.Normal
-            };
-            _notificationManager.ShowNotification(data);
-        }
-
-        /// <summary>
-        /// Tests the global hotkey system by showing registered hotkeys
-        /// </summary>
-        private void TestHotkeySystemBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var registeredHotkeys = _hotkeyManager.GetRegisteredHotkeys();
-            var systemConfig = _hotkeyManager.SystemConfiguration;
-
-            var message = $"Hotkey System Status:\n" +
-                         $"Enabled: {_hotkeyManager.IsEnabled}\n" +
-                         $"Registered Hotkeys: {registeredHotkeys.Count}\n" +
-                         $"Window Handle Available: {_hotkeyManager.IsWindowHandleAvailable}\n\n";
-
-            if (registeredHotkeys.Count > 0)
-            {
-                message += "Registered Hotkeys:\n";
-                foreach (var hotkey in registeredHotkeys)
-                {
-                    message += $"• {hotkey.DisplayName}: {hotkey.Description}\n";
-                }
+                e.Cancel = true;
+                MinimizeToSystemTray();
             }
             else
             {
-                message += "No hotkeys currently registered.\n";
-                message += "Default hotkeys should be:\n";
-                message += "• Ctrl+Shift+D: Dismiss All Notifications\n";
-                message += "• Ctrl+Shift+Esc: Dismiss Latest Notification\n";
-                message += "• Ctrl+Shift+P: Toggle Notification System\n";
-                message += "• Ctrl+Shift+Q: Show Queue Status\n";
+                // Cleanup before exit
+                _systemTrayManager?.Dispose();
             }
+        }
 
-            var data = new NotificationData
+        /// <summary>
+        /// Minimizes the window to system tray
+        /// </summary>
+        private void MinimizeToSystemTray()
+        {
+            if (_systemTrayManager != null)
             {
-                Title = "Hotkey System Test",
-                Message = message,
-                Category = NotificationCategory.System,
-                Priority = NotificationPriority.Normal,
-                CustomTimeout = TimeSpan.FromSeconds(10)
-            };
-            _notificationManager.ShowNotification(data);
+                Hide();
+                _isMinimizedToTray = true;
+                _systemTrayManager.IsVisible = true;
+
+                if (!_settingsManager.CurrentSettings.ApplicationPreferences.ShowConfigurationOnStartup)
+                {
+                    _systemTrayManager.ShowTrayBalloon(
+                        "IntervalToast",
+                        "Application minimized to system tray. Double-click to restore.",
+                        System.Windows.Forms.ToolTipIcon.Info,
+                        2000);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Restores the window from system tray
+        /// </summary>
+        private void RestoreFromSystemTray()
+        {
+            Show();
+            WindowState = WindowState.Normal;
+            Activate();
+            _isMinimizedToTray = false;
         }
 
         #endregion
 
-        #region Hotkey Configuration Event Handlers
+        #region Event Handlers
 
         /// <summary>
-        /// Handles enable/disable hotkey system checkbox changes
+        /// Shows configuration window when requested from system tray
         /// </summary>
-        private void EnableHotkeysCheckBox_Changed(object sender, RoutedEventArgs e)
+        private void OnShowConfigurationRequested(object? sender, EventArgs e)
         {
-            try
-            {
-                // Skip if managers are not initialized yet (during XAML loading)
-                if (_hotkeyManager == null || _notificationManager == null)
-                    return;
-
-                var isEnabled = EnableHotkeysCheckBox.IsChecked == true;
-                _hotkeyManager.IsEnabled = isEnabled;
-
-                // Update UI status
-                UpdateHotkeySystemStatus();
-                RefreshHotkeyStatus();
-
-                var data = NotificationData.CreateInfo(
-                    "Hotkey System",
-                    $"Global hotkeys are now {(isEnabled ? "enabled" : "disabled")}"
-                );
-                _notificationManager.ShowNotification(data);
-            }
-            catch (Exception ex)
-            {
-                ShowHotkeyError($"Failed to toggle hotkey system: {ex.Message}");
-            }
+            RestoreFromSystemTray();
         }
 
         /// <summary>
-        /// Resets all hotkeys to their default configurations
+        /// Handles application exit request from system tray
         /// </summary>
-        private void ResetHotkeysBtn_Click(object sender, RoutedEventArgs e)
+        private void OnExitApplicationRequested(object? sender, EventArgs e)
         {
-            try
+            _suppressCloseToTray = true;
+            Close();
+        }
+
+        /// <summary>
+        /// Handles settings loaded event
+        /// </summary>
+        private void OnSettingsLoaded(object? sender, SettingsEventArgs e)
+        {
+            UpdateUIFromSettings();
+        }
+
+        /// <summary>
+        /// Handles settings saved event
+        /// </summary>
+        private void OnSettingsSaved(object? sender, SettingsEventArgs e)
+        {
+            StatusText.Text = $"Settings saved at {DateTime.Now:HH:mm:ss}";
+        }
+
+        /// <summary>
+        /// Handles individual setting changes
+        /// </summary>
+        private void OnSettingChanged(object? sender, SettingChangedEventArgs e)
+        {
+            Debug.WriteLine($"Setting changed: {e.SettingName}");
+
+            // Update notification manager configuration if notification settings changed
+            if (e.SettingName == "NotificationConfiguration")
             {
-                var result = System.Windows.MessageBox.Show(
-                    "This will reset all hotkeys to their default configurations. Are you sure?",
-                    "Reset Hotkeys",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.Yes)
-                {
-                    // Unregister all current hotkeys
-                    _hotkeyManager.UnregisterAllHotkeys();
-
-                    // Register default hotkeys
-                    _hotkeyManager.RegisterDefaultHotkeys();
-
-                    // Update UI to show defaults
-                    UpdateHotkeyDisplays();
-                    RefreshHotkeyStatus();
-
-                    var data = NotificationData.CreateSuccess(
-                        "Hotkeys Reset",
-                        "All hotkeys have been reset to their default configurations."
-                    );
-                    _notificationManager.ShowNotification(data);
-                }
-            }
-            catch (Exception ex)
-            {
-                ShowHotkeyError($"Failed to reset hotkeys: {ex.Message}");
+                _notificationManager.SetGlobalConfiguration(_settingsManager.NotificationConfiguration);
             }
         }
 
         /// <summary>
-        /// Opens the edit dialog for the DismissAll hotkey
+        /// Handles notification shown events for statistics
         /// </summary>
-        private void EditDismissAllBtn_Click(object sender, RoutedEventArgs e)
+        private void OnNotificationShown(object? sender, NotificationEventArgs e)
         {
-            EditHotkey("DismissAll", "Dismiss All Notifications", ModifierKeys.Control | ModifierKeys.Shift, Key.D);
+            UpdateSystemStatus();
+            UpdateRecentActivity($"Shown: {e.Data.Title}");
         }
 
         /// <summary>
-        /// Opens the edit dialog for the DismissLatest hotkey
+        /// Handles notification dismissed events for statistics
         /// </summary>
-        private void EditDismissLatestBtn_Click(object sender, RoutedEventArgs e)
+        private void OnNotificationDismissed(object? sender, NotificationEventArgs e)
         {
-            EditHotkey("DismissLatest", "Dismiss Latest Notification", ModifierKeys.Control | ModifierKeys.Shift, Key.Escape);
-        }
-
-        /// <summary>
-        /// Opens the edit dialog for the ToggleSystem hotkey
-        /// </summary>
-        private void EditToggleSystemBtn_Click(object sender, RoutedEventArgs e)
-        {
-            EditHotkey("ToggleSystem", "Toggle Notification System", ModifierKeys.Control | ModifierKeys.Shift, Key.P);
-        }
-
-        /// <summary>
-        /// Opens the edit dialog for the ShowQueueStatus hotkey
-        /// </summary>
-        private void EditShowQueueStatusBtn_Click(object sender, RoutedEventArgs e)
-        {
-            EditHotkey("ShowQueueStatus", "Show Queue Status", ModifierKeys.Control | ModifierKeys.Shift, Key.Q);
-        }
-
-        /// <summary>
-        /// Handles clicking on hotkey display areas to edit them
-        /// </summary>
-        private void DismissAllHotkey_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => EditDismissAllBtn_Click(sender, e);
-        private void DismissLatestHotkey_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => EditDismissLatestBtn_Click(sender, e);
-        private void ToggleSystemHotkey_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => EditToggleSystemBtn_Click(sender, e);
-        private void ShowQueueStatusHotkey_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => EditShowQueueStatusBtn_Click(sender, e);
-
-        /// <summary>
-        /// Tests the DismissAll hotkey functionality
-        /// </summary>
-        private void TestDismissAllBtn_Click(object sender, RoutedEventArgs e)
-        {
-            TestHotkeyAction("DismissAll", () => {
-                _notificationManager.CloseAllNotifications();
-                return "All notifications dismissed";
-            });
-        }
-
-        /// <summary>
-        /// Tests the DismissLatest hotkey functionality
-        /// </summary>
-        private void TestDismissLatestBtn_Click(object sender, RoutedEventArgs e)
-        {
-            TestHotkeyAction("DismissLatest", () => {
-                var activeNotifications = _notificationManager.GetActiveNotifications();
-                if (activeNotifications.Count > 0)
-                {
-                    var latest = activeNotifications.OrderByDescending(n => n.CreatedAt).First();
-                    _notificationManager.CloseNotification(latest.Id);
-                    return $"Dismissed latest notification: {latest.Title}";
-                }
-                return "No active notifications to dismiss";
-            });
-        }
-
-        /// <summary>
-        /// Tests the ToggleSystem hotkey functionality
-        /// </summary>
-        private void TestToggleSystemBtn_Click(object sender, RoutedEventArgs e)
-        {
-            TestHotkeyAction("ToggleSystem", () => {
-                var status = _notificationManager.GetQueueStatus();
-                return $"System Status - Active: {status.ActiveCount}, Pending: {status.PendingCount}";
-            });
-        }
-
-        /// <summary>
-        /// Tests the ShowQueueStatus hotkey functionality
-        /// </summary>
-        private void TestShowQueueStatusBtn_Click(object sender, RoutedEventArgs e)
-        {
-            TestHotkeyAction("ShowQueueStatus", () => {
-                ShowQueueStatusBtn_Click(sender, e);
-                return "Queue status notification shown";
-            });
-        }
-
-        /// <summary>
-        /// Tests all hotkey functionality
-        /// </summary>
-        private void TestAllHotkeysBtn_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var registeredHotkeys = _hotkeyManager.GetRegisteredHotkeys();
-                var message = $"Testing {registeredHotkeys.Count} registered hotkeys:\n\n";
-
-                foreach (var hotkey in registeredHotkeys)
-                {
-                    var status = hotkey.IsRegistered ? "✓ Registered" : "✗ Not Registered";
-                    message += $"• {hotkey.DisplayName}: {hotkey.Description} - {status}\n";
-                }
-
-                var data = new NotificationData
-                {
-                    Title = "Hotkey System Test",
-                    Message = message,
-                    Category = NotificationCategory.System,
-                    Priority = NotificationPriority.Normal,
-                    CustomTimeout = TimeSpan.FromSeconds(10)
-                };
-                _notificationManager.ShowNotification(data);
-
-                UpdateHotkeyConfigStatus($"All hotkeys tested. {registeredHotkeys.Count} hotkeys are currently registered.");
-            }
-            catch (Exception ex)
-            {
-                ShowHotkeyError($"Failed to test hotkeys: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Refreshes the hotkey status display
-        /// </summary>
-        private void RefreshHotkeyStatusBtn_Click(object sender, RoutedEventArgs e)
-        {
-            RefreshHotkeyStatus();
-            UpdateHotkeyDisplays();
-
-            var data = NotificationData.CreateInfo(
-                "Hotkey Status Refreshed",
-                "Hotkey configuration status has been updated."
-            );
-            _notificationManager.ShowNotification(data);
+            UpdateSystemStatus();
+            UpdateRecentActivity($"Dismissed: {e.Data.Title}");
         }
 
         #endregion
 
-        #region Hotkey Configuration Helper Methods
+        #region UI Updates
 
         /// <summary>
-        /// Generic method to edit a hotkey configuration
+        /// Updates UI controls from current settings
         /// </summary>
-        private void EditHotkey(string actionName, string description, ModifierKeys defaultModifiers, Key defaultKey)
+        private void UpdateUIFromSettings()
         {
             try
             {
-                // Find existing hotkey or create default
-                var registeredHotkeys = _hotkeyManager.GetRegisteredHotkeys();
-                var existingHotkey = registeredHotkeys.FirstOrDefault(h => h.Description.Contains(description.Split(' ')[0]));
+                var settings = _settingsManager.CurrentSettings;
+                var config = settings.NotificationConfiguration;
+                var prefs = settings.ApplicationPreferences;
 
-                var currentHotkey = existingHotkey ?? new HotkeyConfiguration
-                {
-                    ModifierKeys = defaultModifiers,
-                    Key = defaultKey,
-                    Description = description
-                };
+                // Update animation settings
+                SetComboBoxSelection(EntryAnimationComboBox, config.EntryAnimation.ToString());
+                SetComboBoxSelection(ExitAnimationComboBox, config.ExitAnimation.ToString());
+                SetComboBoxSelection(AnimationSpeedComboBox, config.AnimationPreset.ToString());
 
-                // Open edit dialog
-                var editWindow = new HotkeyEditWindow(currentHotkey, description)
-                {
-                    Owner = this
-                };
+                // Update system behavior settings
+                MaxNotificationsSlider.Value = config.MaxVisibleNotifications;
+                AutoCloseDelaySlider.Value = config.AutoCloseDelay.TotalSeconds;
+                NotificationSpacingSlider.Value = config.NotificationSpacing;
+                EnableHoverPauseCheckBox.IsChecked = config.PauseOnHover;
 
-                if (editWindow.ShowDialog() == true && editWindow.EditedHotkey != null)
-                {
-                    var newHotkey = editWindow.EditedHotkey;
-
-                    // Unregister old hotkey if it exists
-                    if (existingHotkey != null)
-                    {
-                        _hotkeyManager.UnregisterHotkey(existingHotkey);
-                    }
-
-                    // Set up the action for the new hotkey
-                    newHotkey.Action = GetHotkeyAction(actionName);
-
-                    // Register new hotkey
-                    var success = _hotkeyManager.RegisterHotkey(newHotkey);
-
-                    if (success)
-                    {
-                        UpdateHotkeyDisplays();
-                        RefreshHotkeyStatus();
-
-                        var data = NotificationData.CreateSuccess(
-                            "Hotkey Updated",
-                            $"{description} hotkey changed to: {newHotkey.DisplayName}"
-                        );
-                        _notificationManager.ShowNotification(data);
-                    }
-                    else
-                    {
-                        // Try to re-register the old hotkey if new one failed
-                        if (existingHotkey != null)
-                        {
-                            _hotkeyManager.RegisterHotkey(existingHotkey);
-                        }
-
-                        ShowHotkeyError($"Failed to register new hotkey: {newHotkey.DisplayName}");
-                    }
-                }
+                // Update application preferences
+                StartWithWindowsCheckBox.IsChecked = prefs.StartWithWindows;
+                MinimizeToTrayCheckBox.IsChecked = prefs.MinimizeToTray;
+                ShowConfigOnStartupCheckBox.IsChecked = prefs.ShowConfigurationOnStartup;
+                CollectStatisticsCheckBox.IsChecked = prefs.CollectUsageStatistics;
             }
             catch (Exception ex)
             {
-                ShowHotkeyError($"Error editing hotkey: {ex.Message}");
+                Debug.WriteLine($"Error updating UI from settings: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// Gets the appropriate action for a hotkey based on its name
+        /// Updates system status indicators
         /// </summary>
-        private Action GetHotkeyAction(string actionName)
-        {
-            return actionName switch
-            {
-                "DismissAll" => () => _notificationManager.CloseAllNotifications(),
-                "DismissLatest" => () => {
-                    var activeNotifications = _notificationManager.GetActiveNotifications();
-                    if (activeNotifications.Count > 0)
-                    {
-                        var latest = activeNotifications.OrderByDescending(n => n.CreatedAt).First();
-                        _notificationManager.CloseNotification(latest.Id);
-                    }
-                },
-                "ToggleSystem" => () => {
-                    var status = _notificationManager.GetQueueStatus();
-                    var message = $"Active: {status.ActiveCount}, Pending: {status.PendingCount}";
-                    var data = NotificationData.CreateSystem("System Status", message);
-                    _notificationManager.ShowNotification(data);
-                },
-                "ShowQueueStatus" => () => ShowQueueStatusBtn_Click(null!, new RoutedEventArgs()),
-                _ => () => { /* No action */ }
-            };
-        }
-
-        /// <summary>
-        /// Tests a hotkey action and shows the result
-        /// </summary>
-        private void TestHotkeyAction(string actionName, Func<string> testAction)
+        private void UpdateSystemStatus()
         {
             try
             {
-                var result = testAction();
-
-                var data = NotificationData.CreateInfo(
-                    $"Hotkey Test: {actionName}",
-                    result
-                );
-                _notificationManager.ShowNotification(data);
-            }
-            catch (Exception ex)
-            {
-                ShowHotkeyError($"Test failed for {actionName}: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Updates all hotkey displays with current configurations
-        /// </summary>
-        private void UpdateHotkeyDisplays()
-        {
-            try
-            {
-                var registeredHotkeys = _hotkeyManager.GetRegisteredHotkeys();
-
-                // Update DismissAll hotkey display
-                var dismissAllHotkey = registeredHotkeys.FirstOrDefault(h => h.Description.Contains("Dismiss All"));
-                DismissAllHotkeyText.Text = dismissAllHotkey?.DisplayName ?? "Ctrl + Shift + D";
-
-                // Update DismissLatest hotkey display
-                var dismissLatestHotkey = registeredHotkeys.FirstOrDefault(h => h.Description.Contains("Dismiss Latest"));
-                DismissLatestHotkeyText.Text = dismissLatestHotkey?.DisplayName ?? "Ctrl + Shift + Esc";
-
-                // Update ToggleSystem hotkey display
-                var toggleSystemHotkey = registeredHotkeys.FirstOrDefault(h => h.Description.Contains("Toggle"));
-                ToggleSystemHotkeyText.Text = toggleSystemHotkey?.DisplayName ?? "Ctrl + Shift + P";
-
-                // Update ShowQueueStatus hotkey display
-                var showQueueStatusHotkey = registeredHotkeys.FirstOrDefault(h => h.Description.Contains("Queue Status"));
-                ShowQueueStatusHotkeyText.Text = showQueueStatusHotkey?.DisplayName ?? "Ctrl + Shift + Q";
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error updating hotkey displays: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Refreshes the hotkey status indicators and system status
-        /// </summary>
-        private void RefreshHotkeyStatus()
-        {
-            try
-            {
-                var registeredHotkeys = _hotkeyManager.GetRegisteredHotkeys();
-                var systemEnabled = _hotkeyManager.IsEnabled;
+                var status = _notificationManager.GetEnhancedQueueStatus();
 
                 // Update system status
-                UpdateHotkeySystemStatus();
+                NotificationSystemStatusText.Text = status.SystemEnabled ? "System Active" : "System Paused";
+                NotificationSystemStatusText.Foreground = status.SystemEnabled ?
+                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(39, 174, 96)) :
+                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(231, 76, 60));
 
-                // Update individual hotkey status indicators
-                UpdateHotkeyStatusIndicator(DismissAllStatusIndicator,
-                    registeredHotkeys.Any(h => h.Description.Contains("Dismiss All") && h.IsRegistered));
+                // Update notification counts
+                ActiveNotificationsText.Text = $"{status.ActiveCount} Active";
+                QueuedNotificationsText.Text = $"{status.PendingCount} Queued";
 
-                UpdateHotkeyStatusIndicator(DismissLatestStatusIndicator,
-                    registeredHotkeys.Any(h => h.Description.Contains("Dismiss Latest") && h.IsRegistered));
+                // Update toggle button text
+                ToggleSystemBtn.Content = status.SystemEnabled ? "Pause System" : "Resume System";
 
-                UpdateHotkeyStatusIndicator(ToggleSystemStatusIndicator,
-                    registeredHotkeys.Any(h => h.Description.Contains("Toggle") && h.IsRegistered));
+                // Update system tray tooltip
+                _systemTrayManager?.UpdateTrayTooltip();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error updating system status: {ex.Message}");
+            }
+        }
 
-                UpdateHotkeyStatusIndicator(ShowQueueStatusStatusIndicator,
-                    registeredHotkeys.Any(h => h.Description.Contains("Queue Status") && h.IsRegistered));
+        /// <summary>
+        /// Updates recent activity display
+        /// </summary>
+        private void UpdateRecentActivity(string activity)
+        {
+            try
+            {
+                var timestamp = DateTime.Now.ToString("HH:mm:ss");
+                var currentText = RecentActivityText.Text;
 
-                // Update overall status message
-                var registeredCount = registeredHotkeys.Count(h => h.IsRegistered);
-                var totalCount = registeredHotkeys.Count;
-
-                string statusMessage;
-                if (!systemEnabled)
+                if (currentText == "No recent notifications")
                 {
-                    statusMessage = "Hotkey system is disabled. Enable it to use global hotkeys.";
-                }
-                else if (registeredCount == totalCount && totalCount > 0)
-                {
-                    statusMessage = $"All {totalCount} hotkeys registered successfully. Click 'Edit' to change key combinations or use 'Test' to verify functionality.";
-                }
-                else if (registeredCount > 0)
-                {
-                    statusMessage = $"{registeredCount} of {totalCount} hotkeys registered successfully. Some hotkeys may have conflicts.";
+                    RecentActivityText.Text = $"[{timestamp}] {activity}";
                 }
                 else
                 {
-                    statusMessage = "No hotkeys are currently registered. Click 'Reset to Defaults' to restore default hotkeys.";
-                }
+                    var lines = currentText.Split('\n').ToList();
+                    lines.Insert(0, $"[{timestamp}] {activity}");
 
-                UpdateHotkeyConfigStatus(statusMessage);
+                    // Keep only last 5 activities
+                    if (lines.Count > 5)
+                    {
+                        lines = lines.Take(5).ToList();
+                    }
+
+                    RecentActivityText.Text = string.Join("\n", lines);
+                }
             }
             catch (Exception ex)
             {
-                UpdateHotkeyConfigStatus($"Error refreshing hotkey status: {ex.Message}");
+                Debug.WriteLine($"Error updating recent activity: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// Updates the hotkey system status display
+        /// Refreshes statistics display
         /// </summary>
-        private void UpdateHotkeySystemStatus()
-        {
-            var isEnabled = _hotkeyManager.IsEnabled;
-            EnableHotkeysCheckBox.IsChecked = isEnabled;
-
-            if (isEnabled)
-            {
-                HotkeySystemStatusText.Text = "System Active";
-                HotkeySystemStatusText.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#27AE60")!);
-            }
-            else
-            {
-                HotkeySystemStatusText.Text = "System Disabled";
-                HotkeySystemStatusText.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#E74C3C")!);
-            }
-        }
-
-        /// <summary>
-        /// Updates a hotkey status indicator
-        /// </summary>
-        private void UpdateHotkeyStatusIndicator(System.Windows.Shapes.Ellipse indicator, bool isRegistered)
-        {
-            if (isRegistered)
-            {
-                indicator.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#27AE60")!);
-                indicator.ToolTip = "Hotkey registered successfully";
-            }
-            else
-            {
-                indicator.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#E74C3C")!);
-                indicator.ToolTip = "Hotkey registration failed or disabled";
-            }
-        }
-
-        /// <summary>
-        /// Updates the hotkey configuration status text
-        /// </summary>
-        private void UpdateHotkeyConfigStatus(string message)
-        {
-            HotkeyConfigStatusText.Text = message;
-        }
-
-        /// <summary>
-        /// Shows a hotkey-related error notification
-        /// </summary>
-        private void ShowHotkeyError(string message)
-        {
-            // Check if notification manager is initialized (avoid issues during XAML loading)
-            if (_notificationManager != null)
-            {
-                var data = NotificationData.CreateError("Hotkey Error", message);
-                _notificationManager.ShowNotification(data);
-            }
-            else
-            {
-                // Fallback to debug output if notification manager not available
-                System.Diagnostics.Debug.WriteLine($"Hotkey Error: {message}");
-            }
-        }
-
-        /// <summary>
-        /// Initializes the hotkey UI when the window loads
-        /// </summary>
-        private void InitializeHotkeyUI()
-        {
-            // This method is called from MainWindow_Loaded
-            UpdateHotkeyDisplays();
-            RefreshHotkeyStatus();
-        }
-
-        /// <summary>
-        /// Runs comprehensive validation tests for the hotkey system
-        /// </summary>
-        private async void RunHotkeyValidationTests()
+        private void RefreshStatistics()
         {
             try
             {
-                var report = await HotkeyValidationTest.RunValidationAsync();
+                var stats = _settingsManager.CurrentSettings.Statistics;
 
-                var data = NotificationData.CreateSystem(
-                    "Hotkey Validation Complete",
-                    $"Tests: {report.TestsRun}, Passed: {report.TestsPassed}, Failed: {report.TestsFailed}\n" +
-                    $"Success Rate: {report.SuccessRate:F1}%"
-                );
-                _notificationManager?.ShowNotification(data);
+                TotalNotificationsText.Text = stats.TotalNotificationsShown.ToString();
+                AverageDisplayTimeText.Text = $"{stats.AverageDisplayTime.TotalSeconds:F1}s";
+                MostActiveTimeText.Text = stats.MostActiveHour.ToString(@"hh\:mm");
 
-                // Output detailed results to debug console
-                System.Diagnostics.Debug.WriteLine("\n=== HOTKEY VALIDATION REPORT ===");
-                System.Diagnostics.Debug.WriteLine(report.ToString());
-                System.Diagnostics.Debug.WriteLine("================================\n");
+                // Update category breakdown
+                CategoryStatsPanel.Children.Clear();
+                foreach (var categoryCount in stats.NotificationsByCategory)
+                {
+                    var panel = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
+                    panel.Children.Add(new TextBlock { Text = $"{categoryCount.Key}:", Width = 80, FontWeight = FontWeights.SemiBold });
+                    panel.Children.Add(new TextBlock { Text = categoryCount.Value.ToString(), Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(102, 102, 102)) });
+                    CategoryStatsPanel.Children.Add(panel);
+                }
             }
             catch (Exception ex)
             {
-                ShowHotkeyError($"Validation test failed: {ex.Message}");
+                Debug.WriteLine($"Error refreshing statistics: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Loads category data into the data grid
+        /// </summary>
+        private void LoadCategoryData()
+        {
+            try
+            {
+                var config = _settingsManager.NotificationConfiguration;
+                var categoryData = new List<CategoryDisplayItem>();
+
+                foreach (var category in config.CategoryConfigurations)
+                {
+                    categoryData.Add(new CategoryDisplayItem
+                    {
+                        CategoryName = category.Key.ToString(),
+                        DefaultTimeout = category.Value.DefaultTimeout.ToString(),
+                        AllowAutoDismiss = category.Value.AllowAutoDismiss,
+                        IconContent = category.Value.IconContent
+                    });
+                }
+
+                CategoryDataGrid.ItemsSource = categoryData;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error loading category data: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Button Event Handlers
+
+        // Header buttons
+        private void MinimizeToTrayBtn_Click(object sender, RoutedEventArgs e)
+        {
+            MinimizeToSystemTray();
+        }
+
+        private void QuickTestBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var notification = NotificationData.CreateInfo(
+                "Quick Test",
+                $"Test notification from dashboard at {DateTime.Now:HH:mm:ss}"
+            );
+            _notificationManager.ShowNotification(notification);
+        }
+
+        // Dashboard tab buttons
+        private void DismissAllBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _notificationManager.CloseAllNotifications();
+        }
+
+        private void ShowQueueStatusBtn_Click(object sender, RoutedEventArgs e)
+        {
+            // Show queue status via system feedback
+            var status = _notificationManager.GetEnhancedQueueStatus();
+            var statusMessage = status.GenerateDetailedStatusMessage();
+            _notificationManager.ShowSystemFeedback("Queue Status", statusMessage);
+        }
+
+        private void ToggleSystemBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var status = _notificationManager.GetEnhancedQueueStatus();
+            if (status.SystemEnabled)
+            {
+                // Note: There's no direct Disable method, so we'll show a notification about this limitation
+                ShowNotImplementedMessage("System Pause/Resume");
+            }
+            else
+            {
+                ShowNotImplementedMessage("System Pause/Resume");
+            }
+            UpdateSystemStatus();
+        }
+
+        // Quick test buttons
+        private void ShowInfoBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var notification = NotificationData.CreateInfo("Information", "This is an info notification");
+            _notificationManager.ShowNotification(notification);
+        }
+
+        private void ShowSuccessBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var notification = NotificationData.CreateSuccess("Success", "Operation completed successfully");
+            _notificationManager.ShowNotification(notification);
+        }
+
+        private void ShowWarningBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var notification = NotificationData.CreateWarning("Warning", "Please review this important message");
+            _notificationManager.ShowNotification(notification);
+        }
+
+        private void ShowErrorBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var notification = NotificationData.CreateError("Error", "An error has occurred that requires attention");
+            _notificationManager.ShowNotification(notification);
+        }
+
+        private void ShowSystemBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var notification = NotificationData.CreateSystem("System", "System status notification");
+            _notificationManager.ShowNotification(notification);
+        }
+
+        // Theme editor buttons
+        private void ApplyLightThemeBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var lightTheme = NotificationConfiguration.CreateLightTheme();
+            ApplyTheme(lightTheme);
+        }
+
+        private void ApplyDarkThemeBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var darkTheme = NotificationConfiguration.CreateDarkTheme();
+            ApplyTheme(darkTheme);
+        }
+
+        private void ApplyMinimalThemeBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var minimalTheme = NotificationConfiguration.CreateMinimal();
+            ApplyTheme(minimalTheme);
+        }
+
+        private void TestLivePreviewBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var notification = NotificationData.CreateInfo("Theme Preview", "This notification shows the current theme settings");
+            _notificationManager.ShowNotification(notification);
+        }
+
+        // Statistics buttons
+        private void RefreshStatisticsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            RefreshStatistics();
+        }
+
+        // Category management buttons
+        private void AddCategoryBtn_Click(object sender, RoutedEventArgs e)
+        {
+            ShowNotImplementedMessage("Add Category");
+        }
+
+        private void ResetCategoriesBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (ShowConfirmationDialog("Reset Categories", "Are you sure you want to reset all categories to defaults?"))
+            {
+                // Reset to defaults
+                var config = _settingsManager.NotificationConfiguration;
+                config.CategoryConfigurations = CategoryConfiguration.GetDefaults();
+                _ = _settingsManager.UpdateNotificationConfigurationAsync(config);
+                LoadCategoryData();
+            }
+        }
+
+        // Advanced settings buttons
+        private void TestAnimationBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var notification = NotificationData.CreateInfo("Animation Test", "Testing current animation settings");
+            _notificationManager.ShowNotification(notification);
+        }
+
+        // Settings buttons
+        private async void ExportSettingsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                DefaultExt = "json",
+                FileName = $"IntervalToast_Settings_{DateTime.Now:yyyyMMdd_HHmmss}.json"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                var success = await _settingsManager.ExportSettingsAsync(dialog.FileName);
+                if (success)
+                {
+                    ShowSuccessMessage("Export Complete", $"Settings exported to {dialog.FileName}");
+                }
+                else
+                {
+                    ShowErrorMessage("Export Failed", "Failed to export settings");
+                }
+            }
+        }
+
+        private async void ImportSettingsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                DefaultExt = "json"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                var success = await _settingsManager.ImportSettingsAsync(dialog.FileName);
+                if (success)
+                {
+                    ShowSuccessMessage("Import Complete", "Settings imported successfully");
+                    UpdateUIFromSettings();
+                }
+                else
+                {
+                    ShowErrorMessage("Import Failed", "Failed to import settings");
+                }
+            }
+        }
+
+        private async void ResetSettingsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (ShowConfirmationDialog("Reset Settings", "Are you sure you want to reset all settings to defaults?"))
+            {
+                var success = await _settingsManager.ResetToDefaultsAsync();
+                if (success)
+                {
+                    ShowSuccessMessage("Reset Complete", "All settings have been reset to defaults");
+                    UpdateUIFromSettings();
+                }
+                else
+                {
+                    ShowErrorMessage("Reset Failed", "Failed to reset settings");
+                }
+            }
+        }
+
+        private async void CreateBackupBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var success = await _settingsManager.CreateBackupAsync();
+            if (success)
+            {
+                ShowSuccessMessage("Backup Created", "Settings backup created successfully");
+            }
+            else
+            {
+                ShowErrorMessage("Backup Failed", "Failed to create settings backup");
+            }
+        }
+
+        // Footer buttons
+        private void AboutBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var aboutMessage = "IntervalToast Configuration Dashboard\n\n" +
+                              "Phase 5: Advanced Configuration & Management Interface\n\n" +
+                              "Features:\n" +
+                              "• Comprehensive settings management\n" +
+                              "• System tray integration\n" +
+                              "• Theme editor with live preview\n" +
+                              "• Statistics dashboard\n" +
+                              "• Category management\n" +
+                              "• Advanced configuration options\n\n" +
+                              "© 2024 IntervalToast Project";
+
+            System.Windows.MessageBox.Show(aboutMessage, "About IntervalToast", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        /// <summary>
+        /// Applies a theme configuration
+        /// </summary>
+        private async void ApplyTheme(NotificationConfiguration themeConfig)
+        {
+            try
+            {
+                var currentConfig = _settingsManager.NotificationConfiguration;
+
+                // Apply theme colors
+                currentConfig.BackgroundColor = themeConfig.BackgroundColor;
+                currentConfig.TitleColor = themeConfig.TitleColor;
+                currentConfig.MessageColor = themeConfig.MessageColor;
+                currentConfig.AccentColor = themeConfig.AccentColor;
+
+                // Apply theme properties
+                currentConfig.Width = themeConfig.Width;
+                currentConfig.Height = themeConfig.Height;
+                currentConfig.CornerRadius = themeConfig.CornerRadius;
+                currentConfig.ShowCloseButton = themeConfig.ShowCloseButton;
+                currentConfig.ShowTimestamp = themeConfig.ShowTimestamp;
+                currentConfig.AutoCloseDelay = themeConfig.AutoCloseDelay;
+
+                await _settingsManager.UpdateNotificationConfigurationAsync(currentConfig);
+                UpdateUIFromSettings();
+
+                ShowSuccessMessage("Theme Applied", "Theme has been applied successfully");
+            }
+            catch (Exception ex)
+            {
+                ShowErrorMessage("Theme Error", $"Failed to apply theme: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Sets ComboBox selection by content
+        /// </summary>
+        private void SetComboBoxSelection(System.Windows.Controls.ComboBox comboBox, string value)
+        {
+            for (int i = 0; i < comboBox.Items.Count; i++)
+            {
+                if (comboBox.Items[i] is System.Windows.Controls.ComboBoxItem item && item.Content.ToString() == value)
+                {
+                    comboBox.SelectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Shows a success message
+        /// </summary>
+        private void ShowSuccessMessage(string title, string message)
+        {
+            var notification = NotificationData.CreateSuccess(title, message);
+            _notificationManager.ShowNotification(notification);
+        }
+
+        /// <summary>
+        /// Shows an error message
+        /// </summary>
+        private void ShowErrorMessage(string title, string message)
+        {
+            var notification = NotificationData.CreateError(title, message);
+            _notificationManager.ShowNotification(notification);
+        }
+
+        /// <summary>
+        /// Shows a not implemented message
+        /// </summary>
+        private void ShowNotImplementedMessage(string feature)
+        {
+            var notification = NotificationData.CreateInfo(
+                "Feature Not Implemented",
+                $"{feature} feature will be available in a future update"
+            );
+            _notificationManager.ShowNotification(notification);
+        }
+
+        /// <summary>
+        /// Shows a confirmation dialog
+        /// </summary>
+        private bool ShowConfirmationDialog(string title, string message)
+        {
+            var result = System.Windows.MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question);
+            return result == MessageBoxResult.Yes;
         }
 
         #endregion
     }
+
+    #region Helper Classes
+
+    /// <summary>
+    /// Display item for category data grid
+    /// </summary>
+    public class CategoryDisplayItem
+    {
+        public string CategoryName { get; set; } = string.Empty;
+        public string DefaultTimeout { get; set; } = string.Empty;
+        public bool AllowAutoDismiss { get; set; }
+        public string IconContent { get; set; } = string.Empty;
+    }
+
+    #endregion
 }
