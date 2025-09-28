@@ -784,6 +784,11 @@ namespace IntervalToast
         public NotificationStatistics Statistics { get; set; } = NotificationStatistics.CreateDefault();
 
         /// <summary>
+        /// Notification scheduling settings
+        /// </summary>
+        public ScheduleSettings ScheduleSettings { get; set; } = ScheduleSettings.CreateDefault();
+
+        /// <summary>
         /// Creates default application settings
         /// </summary>
         public static ApplicationSettings CreateDefault() => new ApplicationSettings();
@@ -801,7 +806,8 @@ namespace IntervalToast
                 NotificationConfiguration = NotificationConfiguration.Clone(),
                 ApplicationPreferences = ApplicationPreferences.Clone(),
                 HotkeySettings = HotkeySettings.Clone(),
-                Statistics = Statistics.Clone()
+                Statistics = Statistics.Clone(),
+                ScheduleSettings = ScheduleSettings.Clone()
             };
         }
     }

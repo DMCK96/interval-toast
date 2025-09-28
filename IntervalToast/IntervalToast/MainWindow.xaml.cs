@@ -23,6 +23,7 @@ namespace IntervalToast
         private readonly GlobalHotkeyManager _hotkeyManager;
         private readonly SettingsManager _settingsManager;
         private readonly SystemTrayManager? _systemTrayManager;
+        private readonly ScheduleManager _scheduleManager;
         private bool _isMinimizedToTray = false;
         private bool _suppressCloseToTray = false;
 
@@ -41,11 +42,12 @@ namespace IntervalToast
             _settingsManager = new SettingsManager();
             _notificationManager = NotificationManager.Instance;
             _hotkeyManager = GlobalHotkeyManager.Instance;
+            _scheduleManager = new ScheduleManager(_notificationManager, _settingsManager);
 
             // Initialize system tray manager
             try
             {
-                _systemTrayManager = new SystemTrayManager(_notificationManager, _hotkeyManager, _settingsManager);
+                _systemTrayManager = new SystemTrayManager(_notificationManager, _hotkeyManager, _settingsManager, _scheduleManager);
                 _systemTrayManager.ShowConfigurationRequested += OnShowConfigurationRequested;
                 _systemTrayManager.ExitApplicationRequested += OnExitApplicationRequested;
             }
@@ -107,6 +109,13 @@ namespace IntervalToast
             UpdateSystemStatus();
             RefreshStatistics();
             LoadCategoryData();
+
+            // Initialize schedule UI
+            InitializeScheduleUI();
+            UpdateScheduleUI();
+
+            // Start schedule manager
+            _scheduleManager.Start();
 
             // Show system tray notification
             _systemTrayManager?.ShowTrayBalloon(
@@ -640,6 +649,177 @@ namespace IntervalToast
             System.Windows.MessageBox.Show(aboutMessage, "About IntervalToast", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
+        // Schedule tab buttons
+        private void ToggleSchedulingBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var settings = _settingsManager.CurrentSettings.ScheduleSettings;
+            settings.SchedulingEnabled = !settings.SchedulingEnabled;
+
+            if (settings.SchedulingEnabled)
+            {
+                _scheduleManager.Start();
+                ToggleSchedulingBtn.Content = "Disable Scheduling";
+                ToggleSchedulingBtn.Style = (Style)FindResource("DangerButtonStyle");
+            }
+            else
+            {
+                _scheduleManager.Stop();
+                ToggleSchedulingBtn.Content = "Enable Scheduling";
+                ToggleSchedulingBtn.Style = (Style)FindResource("SuccessButtonStyle");
+            }
+
+            _settingsManager.SaveSettingsAsync();
+            UpdateScheduleUI();
+        }
+
+        private void RefreshSchedulesBtn_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateScheduleUI();
+        }
+
+        private void CreateScheduleBtn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var schedule = CreateScheduleFromForm();
+                _scheduleManager.AddSchedule(schedule);
+                UpdateScheduleUI();
+                ClearScheduleForm();
+
+                ShowSuccessMessage("Schedule Created", $"Schedule '{schedule.Name}' has been created successfully.");
+            }
+            catch (Exception ex)
+            {
+                ShowErrorMessage("Error Creating Schedule", ex.Message);
+            }
+        }
+
+        private void TestScheduleBtn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var schedule = CreateScheduleFromForm();
+
+                // Create notification from template
+                var notification = new NotificationData
+                {
+                    Title = schedule.NotificationTemplate.Title,
+                    Message = schedule.NotificationTemplate.Message,
+                    Category = schedule.NotificationTemplate.Category,
+                    Priority = schedule.NotificationTemplate.Priority,
+                    IconContent = schedule.NotificationTemplate.IconContent
+                };
+
+                // Add test metadata
+                notification.Metadata["IsTest"] = true;
+                notification.Metadata["TestTime"] = DateTime.Now;
+
+                _notificationManager.ShowNotification(notification);
+                ShowSuccessMessage("Test Notification", "Test notification sent successfully.");
+            }
+            catch (Exception ex)
+            {
+                ShowErrorMessage("Error Testing Schedule", ex.Message);
+            }
+        }
+
+        private void ClearFormBtn_Click(object sender, RoutedEventArgs e)
+        {
+            ClearScheduleForm();
+        }
+
+        private void DeleteSelectedBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (ScheduleDataGrid.SelectedItem is NotificationSchedule schedule)
+            {
+                var result = System.Windows.MessageBox.Show(
+                    $"Are you sure you want to delete the schedule '{schedule.Name}'?",
+                    "Confirm Delete",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    _scheduleManager.RemoveSchedule(schedule.Id);
+                    UpdateScheduleUI();
+                    ShowSuccessMessage("Schedule Deleted", $"Schedule '{schedule.Name}' has been deleted.");
+                }
+            }
+            else
+            {
+                ShowErrorMessage("No Selection", "Please select a schedule to delete.");
+            }
+        }
+
+        private void ClearAllSchedulesBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var result = System.Windows.MessageBox.Show(
+                "Are you sure you want to delete ALL schedules? This cannot be undone.",
+                "Confirm Clear All",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                _scheduleManager.ClearAllSchedules();
+                UpdateScheduleUI();
+                ShowSuccessMessage("Schedules Cleared", "All schedules have been deleted.");
+            }
+        }
+
+        private void EditScheduleBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button button && button.DataContext is NotificationSchedule schedule)
+            {
+                LoadScheduleIntoForm(schedule);
+                ShowInfoMessage("Schedule Loaded", $"Schedule '{schedule.Name}' has been loaded into the form for editing.");
+            }
+        }
+
+        private void TestExistingScheduleBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button button && button.DataContext is NotificationSchedule schedule)
+            {
+                _scheduleManager.TriggerSchedule(schedule.Id);
+                ShowSuccessMessage("Schedule Triggered", $"Schedule '{schedule.Name}' has been triggered manually.");
+            }
+        }
+
+        private void CloneScheduleBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button button && button.DataContext is NotificationSchedule schedule)
+            {
+                var clonedSchedule = schedule.Clone();
+                _scheduleManager.AddSchedule(clonedSchedule);
+                UpdateScheduleUI();
+                ShowSuccessMessage("Schedule Cloned", $"Schedule '{schedule.Name}' has been cloned as '{clonedSchedule.Name}'.");
+            }
+        }
+
+        private void DeleteScheduleBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button button && button.DataContext is NotificationSchedule schedule)
+            {
+                var result = System.Windows.MessageBox.Show(
+                    $"Are you sure you want to delete the schedule '{schedule.Name}'?",
+                    "Confirm Delete",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    _scheduleManager.RemoveSchedule(schedule.Id);
+                    UpdateScheduleUI();
+                    ShowSuccessMessage("Schedule Deleted", $"Schedule '{schedule.Name}' has been deleted.");
+                }
+            }
+        }
+
+        private void RecurrenceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateIntervalUI();
+        }
+
         #endregion
 
         #region Helper Methods
@@ -712,6 +892,15 @@ namespace IntervalToast
         }
 
         /// <summary>
+        /// Shows an info message
+        /// </summary>
+        private void ShowInfoMessage(string title, string message)
+        {
+            var notification = NotificationData.CreateInfo(title, message);
+            _notificationManager.ShowNotification(notification);
+        }
+
+        /// <summary>
         /// Shows a not implemented message
         /// </summary>
         private void ShowNotImplementedMessage(string feature)
@@ -730,6 +919,303 @@ namespace IntervalToast
         {
             var result = System.Windows.MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question);
             return result == MessageBoxResult.Yes;
+        }
+
+        /// <summary>
+        /// Initializes the schedule UI components
+        /// </summary>
+        private void InitializeScheduleUI()
+        {
+            // Populate hour dropdown (0-23)
+            for (int i = 0; i < 24; i++)
+            {
+                StartHourComboBox.Items.Add(i.ToString("00"));
+            }
+            StartHourComboBox.SelectedItem = DateTime.Now.Hour.ToString("00");
+
+            // Populate minute dropdown (00, 15, 30, 45)
+            for (int i = 0; i < 60; i += 15)
+            {
+                StartMinuteComboBox.Items.Add(i.ToString("00"));
+            }
+            StartMinuteComboBox.SelectedItem = "00";
+
+            // Initialize form
+            ClearScheduleForm();
+            UpdateIntervalUI();
+
+            // Subscribe to schedule manager events
+            _scheduleManager.ScheduleAdded += OnScheduleAdded;
+            _scheduleManager.ScheduleRemoved += OnScheduleRemoved;
+            _scheduleManager.ScheduleUpdated += OnScheduleUpdated;
+            _scheduleManager.ScheduleTriggered += OnScheduleTriggered;
+            _scheduleManager.StatusChanged += OnScheduleManagerStatusChanged;
+        }
+
+        /// <summary>
+        /// Updates the schedule UI with current data
+        /// </summary>
+        private void UpdateScheduleUI()
+        {
+            try
+            {
+                // Update status display
+                var settings = _settingsManager.CurrentSettings.ScheduleSettings;
+                var isEnabled = settings.SchedulingEnabled && _scheduleManager.IsRunning;
+
+                SchedulingStatusText.Text = isEnabled ? "Enabled" : "Disabled";
+                SchedulingStatusText.Foreground = new System.Windows.Media.SolidColorBrush(
+                    isEnabled ? System.Windows.Media.Color.FromRgb(39, 174, 96) : System.Windows.Media.Color.FromRgb(231, 76, 60));
+
+                // Update button
+                ToggleSchedulingBtn.Content = isEnabled ? "Disable Scheduling" : "Enable Scheduling";
+                ToggleSchedulingBtn.Style = (Style)FindResource(isEnabled ? "DangerButtonStyle" : "SuccessButtonStyle");
+
+                // Update schedule counts
+                var stats = _scheduleManager.GetStatistics();
+                ActiveSchedulesText.Text = $"{stats.EnabledSchedules} Active";
+
+                // Update next schedule time
+                var nextTime = _scheduleManager.NextScheduledTime;
+                NextScheduleText.Text = nextTime?.ToString("MM/dd HH:mm") ?? "None";
+
+                // Update data grid
+                ScheduleDataGrid.ItemsSource = _scheduleManager.Schedules.ToList();
+
+                // Update statistics
+                TotalSchedulesText.Text = stats.TotalSchedules.ToString();
+                EnabledSchedulesText.Text = stats.EnabledSchedules.ToString();
+                RecurringSchedulesText.Text = stats.RecurringSchedules.ToString();
+                TotalTriggersText.Text = stats.TotalTriggers.ToString();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error updating schedule UI: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Updates the interval UI based on selected recurrence
+        /// </summary>
+        private void UpdateIntervalUI()
+        {
+            // Check if UI controls are initialized
+            if (RecurrenceComboBox == null || IntervalLabel == null || IntervalPanel == null || IntervalUnitLabel == null)
+                return;
+
+            var selectedIndex = RecurrenceComboBox.SelectedIndex;
+            var isRecurring = selectedIndex > 0; // 0 = One Time
+
+            IntervalLabel.Visibility = isRecurring ? Visibility.Visible : Visibility.Hidden;
+            IntervalPanel.Visibility = isRecurring ? Visibility.Visible : Visibility.Hidden;
+
+            if (isRecurring)
+            {
+                string unitText = selectedIndex switch
+                {
+                    1 => "minute(s)",
+                    2 => "hour(s)",
+                    3 => "day(s)",
+                    4 => "week(s)",
+                    5 => "month(s)",
+                    _ => "time(s)"
+                };
+                IntervalUnitLabel.Text = unitText;
+            }
+        }
+
+        /// <summary>
+        /// Creates a schedule from the form data
+        /// </summary>
+        private NotificationSchedule CreateScheduleFromForm()
+        {
+            // Validate inputs
+            if (string.IsNullOrWhiteSpace(ScheduleNameTextBox.Text))
+                throw new ArgumentException("Schedule name is required.");
+
+            if (string.IsNullOrWhiteSpace(NotificationTitleTextBox.Text))
+                throw new ArgumentException("Notification title is required.");
+
+            if (string.IsNullOrWhiteSpace(NotificationMessageTextBox.Text))
+                throw new ArgumentException("Notification message is required.");
+
+            // Parse time
+            var date = StartDatePicker.SelectedDate ?? DateTime.Today;
+            var hour = int.Parse(StartHourComboBox.SelectedItem?.ToString() ?? "0");
+            var minute = int.Parse(StartMinuteComboBox.SelectedItem?.ToString() ?? "0");
+            var startTime = new DateTime(date.Year, date.Month, date.Day, hour, minute, 0);
+
+            // Parse recurrence
+            var recurrenceIndex = RecurrenceComboBox.SelectedIndex;
+            var recurrence = recurrenceIndex switch
+            {
+                0 => ScheduleRecurrence.OneTime,
+                1 => ScheduleRecurrence.Minutes,
+                2 => ScheduleRecurrence.Hours,
+                3 => ScheduleRecurrence.Days,
+                4 => ScheduleRecurrence.Weekly,
+                5 => ScheduleRecurrence.Monthly,
+                _ => ScheduleRecurrence.OneTime
+            };
+
+            // Parse interval value
+            var intervalValue = 1;
+            if (recurrence != ScheduleRecurrence.OneTime)
+            {
+                if (!int.TryParse(IntervalValueTextBox.Text, out intervalValue) || intervalValue <= 0)
+                    throw new ArgumentException("Interval value must be a positive number.");
+            }
+
+            // Parse category and priority
+            var category = NotificationCategoryComboBox.SelectedIndex switch
+            {
+                0 => NotificationCategory.Info,
+                1 => NotificationCategory.Success,
+                2 => NotificationCategory.Warning,
+                3 => NotificationCategory.Error,
+                4 => NotificationCategory.System,
+                _ => NotificationCategory.Info
+            };
+
+            var priority = NotificationPriorityComboBox.SelectedIndex switch
+            {
+                0 => NotificationPriority.Low,
+                1 => NotificationPriority.Normal,
+                2 => NotificationPriority.High,
+                3 => NotificationPriority.Critical,
+                _ => NotificationPriority.Normal
+            };
+
+            // Create schedule
+            var schedule = new NotificationSchedule
+            {
+                Name = ScheduleNameTextBox.Text.Trim(),
+                StartTime = startTime,
+                Recurrence = recurrence,
+                IntervalValue = intervalValue,
+                NotificationTemplate = new NotificationData
+                {
+                    Title = NotificationTitleTextBox.Text.Trim(),
+                    Message = NotificationMessageTextBox.Text.Trim(),
+                    Category = category,
+                    Priority = priority
+                }
+            };
+
+            return schedule;
+        }
+
+        /// <summary>
+        /// Clears the schedule creation form
+        /// </summary>
+        private void ClearScheduleForm()
+        {
+            ScheduleNameTextBox.Text = "My Reminder";
+            NotificationTitleTextBox.Text = "Reminder";
+            NotificationMessageTextBox.Text = "Time for a break!";
+            NotificationCategoryComboBox.SelectedIndex = 0;
+            NotificationPriorityComboBox.SelectedIndex = 1;
+            StartDatePicker.SelectedDate = DateTime.Today;
+            StartHourComboBox.SelectedItem = DateTime.Now.Hour.ToString("00");
+            StartMinuteComboBox.SelectedItem = "00";
+            RecurrenceComboBox.SelectedIndex = 0;
+            IntervalValueTextBox.Text = "1";
+            UpdateIntervalUI();
+        }
+
+        /// <summary>
+        /// Loads a schedule into the form for editing
+        /// </summary>
+        private void LoadScheduleIntoForm(NotificationSchedule schedule)
+        {
+            ScheduleNameTextBox.Text = schedule.Name;
+            NotificationTitleTextBox.Text = schedule.NotificationTemplate.Title;
+            NotificationMessageTextBox.Text = schedule.NotificationTemplate.Message;
+
+            // Set category
+            NotificationCategoryComboBox.SelectedIndex = schedule.NotificationTemplate.Category switch
+            {
+                NotificationCategory.Info => 0,
+                NotificationCategory.Success => 1,
+                NotificationCategory.Warning => 2,
+                NotificationCategory.Error => 3,
+                NotificationCategory.System => 4,
+                _ => 0
+            };
+
+            // Set priority
+            NotificationPriorityComboBox.SelectedIndex = schedule.NotificationTemplate.Priority switch
+            {
+                NotificationPriority.Low => 0,
+                NotificationPriority.Normal => 1,
+                NotificationPriority.High => 2,
+                NotificationPriority.Critical => 3,
+                _ => 1
+            };
+
+            // Set time
+            StartDatePicker.SelectedDate = schedule.StartTime.Date;
+            StartHourComboBox.SelectedItem = schedule.StartTime.Hour.ToString("00");
+            StartMinuteComboBox.SelectedItem = schedule.StartTime.Minute.ToString("00");
+
+            // Set recurrence
+            RecurrenceComboBox.SelectedIndex = schedule.Recurrence switch
+            {
+                ScheduleRecurrence.OneTime => 0,
+                ScheduleRecurrence.Minutes => 1,
+                ScheduleRecurrence.Hours => 2,
+                ScheduleRecurrence.Days => 3,
+                ScheduleRecurrence.Weekly => 4,
+                ScheduleRecurrence.Monthly => 5,
+                _ => 0
+            };
+
+            IntervalValueTextBox.Text = schedule.IntervalValue.ToString();
+            UpdateIntervalUI();
+        }
+
+        /// <summary>
+        /// Event handler for schedule added
+        /// </summary>
+        private void OnScheduleAdded(object? sender, ScheduleEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() => UpdateScheduleUI());
+        }
+
+        /// <summary>
+        /// Event handler for schedule removed
+        /// </summary>
+        private void OnScheduleRemoved(object? sender, ScheduleEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() => UpdateScheduleUI());
+        }
+
+        /// <summary>
+        /// Event handler for schedule updated
+        /// </summary>
+        private void OnScheduleUpdated(object? sender, ScheduleEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() => UpdateScheduleUI());
+        }
+
+        /// <summary>
+        /// Event handler for schedule triggered
+        /// </summary>
+        private void OnScheduleTriggered(object? sender, ScheduleTriggeredEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                UpdateScheduleUI();
+                Debug.WriteLine($"Schedule '{e.Schedule.Name}' triggered - Count: {e.Schedule.TriggerCount}");
+            });
+        }
+
+        /// <summary>
+        /// Event handler for schedule manager status change
+        /// </summary>
+        private void OnScheduleManagerStatusChanged(object? sender, ScheduleManagerStatusEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() => UpdateScheduleUI());
         }
 
         #endregion

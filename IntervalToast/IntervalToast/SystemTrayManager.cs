@@ -22,6 +22,7 @@ namespace IntervalToast
         private readonly NotificationManager _notificationManager;
         private readonly GlobalHotkeyManager _hotkeyManager;
         private readonly SettingsManager _settingsManager;
+        private readonly ScheduleManager? _scheduleManager;
         private bool _disposed = false;
 
         #endregion
@@ -49,10 +50,23 @@ namespace IntervalToast
         /// <param name="hotkeyManager">The global hotkey manager instance</param>
         /// <param name="settingsManager">The settings manager instance</param>
         public SystemTrayManager(NotificationManager notificationManager, GlobalHotkeyManager hotkeyManager, SettingsManager settingsManager)
+            : this(notificationManager, hotkeyManager, settingsManager, null)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the SystemTrayManager with schedule support
+        /// </summary>
+        /// <param name="notificationManager">The notification manager instance</param>
+        /// <param name="hotkeyManager">The global hotkey manager instance</param>
+        /// <param name="settingsManager">The settings manager instance</param>
+        /// <param name="scheduleManager">The schedule manager instance (optional)</param>
+        public SystemTrayManager(NotificationManager notificationManager, GlobalHotkeyManager hotkeyManager, SettingsManager settingsManager, ScheduleManager? scheduleManager)
         {
             _notificationManager = notificationManager ?? throw new ArgumentNullException(nameof(notificationManager));
             _hotkeyManager = hotkeyManager ?? throw new ArgumentNullException(nameof(hotkeyManager));
             _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
+            _scheduleManager = scheduleManager;
 
             InitializeSystemTray();
         }
@@ -174,6 +188,26 @@ namespace IntervalToast
             };
             _contextMenu.Items.Add(queueStatusItem);
 
+            // Schedule Section (if schedule manager is available)
+            if (_scheduleManager != null)
+            {
+                _contextMenu.Items.Add(new ToolStripSeparator());
+
+                var scheduleStatusItem = new ToolStripMenuItem("Schedule Status")
+                {
+                    Image = GetEmbeddedIcon("schedule")
+                };
+                scheduleStatusItem.Click += (s, e) => ShowScheduleStatusNotification();
+                _contextMenu.Items.Add(scheduleStatusItem);
+
+                var toggleSchedulingItem = new ToolStripMenuItem("Toggle Scheduling")
+                {
+                    Image = GetEmbeddedIcon("toggle")
+                };
+                toggleSchedulingItem.Click += OnToggleSchedulingClick;
+                _contextMenu.Items.Add(toggleSchedulingItem);
+            }
+
             _contextMenu.Items.Add(new ToolStripSeparator());
 
             // Configuration Section
@@ -276,6 +310,27 @@ namespace IntervalToast
                     var status = _notificationManager.GetEnhancedQueueStatus();
                     queueStatusItem.Text = $"Queue Status ({status.ActiveCount} active, {status.PendingCount} queued)";
                 }
+
+                // Update schedule status items (if schedule manager is available)
+                if (_scheduleManager != null)
+                {
+                    var scheduleStatusItem = _contextMenu.Items.OfType<ToolStripMenuItem>()
+                        .FirstOrDefault(item => item.Text.Contains("Schedule Status"));
+                    if (scheduleStatusItem != null)
+                    {
+                        var stats = _scheduleManager.GetStatistics();
+                        scheduleStatusItem.Text = $"Schedule Status ({stats.EnabledSchedules} enabled, {stats.TotalSchedules} total)";
+                    }
+
+                    var toggleSchedulingItem = _contextMenu.Items.OfType<ToolStripMenuItem>()
+                        .FirstOrDefault(item => item.Text.Contains("Toggle Scheduling"));
+                    if (toggleSchedulingItem != null)
+                    {
+                        var isRunning = _scheduleManager.IsRunning;
+                        toggleSchedulingItem.Text = isRunning ? "Disable Scheduling" : "Enable Scheduling";
+                        toggleSchedulingItem.Image = GetEmbeddedIcon(isRunning ? "pause" : "resume");
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -325,6 +380,72 @@ namespace IntervalToast
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error showing about dialog: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Shows the schedule status notification
+        /// </summary>
+        private void ShowScheduleStatusNotification()
+        {
+            if (_scheduleManager == null) return;
+
+            try
+            {
+                var stats = _scheduleManager.GetStatistics();
+                var nextTime = _scheduleManager.NextScheduledTime;
+
+                var statusMessage = $"Schedule System Status:\n\n" +
+                                   $"• Total Schedules: {stats.TotalSchedules}\n" +
+                                   $"• Enabled Schedules: {stats.EnabledSchedules}\n" +
+                                   $"• Recurring Schedules: {stats.RecurringSchedules}\n" +
+                                   $"• Total Triggers: {stats.TotalTriggers}\n" +
+                                   $"• System Status: {(_scheduleManager.IsRunning ? "Running" : "Stopped")}\n";
+
+                if (nextTime.HasValue)
+                    statusMessage += $"• Next Notification: {nextTime.Value:MM/dd/yyyy HH:mm}";
+                else
+                    statusMessage += "• Next Notification: None scheduled";
+
+                _notificationManager.ShowSystemFeedback("Schedule System Status", statusMessage);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error showing schedule status: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Toggles the scheduling system on/off
+        /// </summary>
+        private void OnToggleSchedulingClick(object? sender, EventArgs e)
+        {
+            if (_scheduleManager == null) return;
+
+            try
+            {
+                var settings = _settingsManager.CurrentSettings.ScheduleSettings;
+
+                if (_scheduleManager.IsRunning)
+                {
+                    _scheduleManager.Stop();
+                    settings.SchedulingEnabled = false;
+                    ShowTrayBalloon("Scheduling Disabled", "Notification scheduling has been disabled", ToolTipIcon.Info, 3000);
+                }
+                else
+                {
+                    _scheduleManager.Start();
+                    settings.SchedulingEnabled = true;
+                    ShowTrayBalloon("Scheduling Enabled", "Notification scheduling has been enabled", ToolTipIcon.Info, 3000);
+                }
+
+                _settingsManager.SaveSettingsAsync();
+                UpdateTrayTooltip();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error toggling scheduling: {ex.Message}");
+                ShowTrayBalloon("Error", "Failed to toggle scheduling system", ToolTipIcon.Error, 3000);
             }
         }
 
@@ -398,6 +519,19 @@ namespace IntervalToast
                 else
                 {
                     statusText += " - Ready";
+                }
+
+                // Add schedule information if available
+                if (_scheduleManager != null)
+                {
+                    var scheduleStats = _scheduleManager.GetStatistics();
+                    statusText += $"\nSchedules: {scheduleStats.EnabledSchedules}/{scheduleStats.TotalSchedules}";
+
+                    var nextTime = _scheduleManager.NextScheduledTime;
+                    if (nextTime.HasValue)
+                    {
+                        statusText += $"\nNext: {nextTime.Value:HH:mm}";
+                    }
                 }
 
                 ToolTipText = statusText;
