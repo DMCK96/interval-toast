@@ -178,7 +178,7 @@ namespace IntervalToast
         public double HoverScaleFactor { get; set; } = 1.02;
 
         /// <summary>
-        /// Gets or sets whether to enable repositioning animations when notifications are dismissed
+        /// Gets or sets whether to enable repositioning animations when notifications are dismissed (enabled for vertical stacking)
         /// </summary>
         public bool EnableRepositionAnimations { get; set; } = true;
 
@@ -186,6 +186,226 @@ namespace IntervalToast
         /// Gets or sets the duration for repositioning animations
         /// </summary>
         public TimeSpan RepositionAnimationDuration { get; set; } = TimeSpan.FromMilliseconds(250);
+
+        #endregion
+
+        #region Phase 3: Advanced Stacking and Management Settings
+
+        /// <summary>
+        /// Gets or sets the maximum number of visible notifications at once (supports vertical stacking)
+        /// </summary>
+        public int MaxVisibleNotifications { get; set; } = 5;
+
+        /// <summary>
+        /// Gets or sets the spacing between stacked notifications
+        /// </summary>
+        public double NotificationSpacing { get; set; } = 10.0;
+
+        /// <summary>
+        /// Gets or sets whether to use compact mode when many notifications are present (disabled for uniform sizing)
+        /// </summary>
+        public bool EnableCompactMode { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the threshold for enabling compact mode
+        /// </summary>
+        public int CompactModeThreshold { get; set; } = 3;
+
+        /// <summary>
+        /// Gets or sets the size reduction factor in compact mode
+        /// </summary>
+        public double CompactModeScale { get; set; } = 0.85;
+
+        /// <summary>
+        /// Gets or sets whether to enable intelligent spacing based on notification count (disabled for simplicity)
+        /// </summary>
+        public bool EnableIntelligentSpacing { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the minimum spacing between notifications
+        /// </summary>
+        public double MinimumSpacing { get; set; } = 5.0;
+
+        /// <summary>
+        /// Gets or sets whether to enable dynamic sizing when screen space is limited (disabled for uniform sizing)
+        /// </summary>
+        public bool EnableDynamicSizing { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the minimum notification height in dynamic sizing mode
+        /// </summary>
+        public double MinimumHeight { get; set; } = 80.0;
+
+        /// <summary>
+        /// Gets or sets whether to enable smart positioning when notifications exceed screen height (disabled for simplicity)
+        /// </summary>
+        public bool EnableSmartPositioning { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets whether to enable priority-based ordering (disabled for single notification display)
+        /// </summary>
+        public bool EnablePriorityOrdering { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets whether to enable category-based grouping
+        /// </summary>
+        public bool EnableCategoryGrouping { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the category grouping spacing
+        /// </summary>
+        public double CategoryGroupSpacing { get; set; } = 15.0;
+
+        /// <summary>
+        /// Gets or sets whether to show overflow indicators
+        /// </summary>
+        public bool ShowOverflowIndicators { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether to enable overflow indicators
+        /// </summary>
+        public bool EnableOverflowIndicators { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether to enable summary notifications for overflow
+        /// </summary>
+        public bool EnableSummaryNotifications { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the maximum queue size for pending notifications
+        /// </summary>
+        public int MaxQueueSize { get; set; } = 50;
+
+        /// <summary>
+        /// Gets or sets the overflow handling strategy
+        /// </summary>
+        public OverflowHandling OverflowStrategy { get; set; } = OverflowHandling.Queue;
+
+        /// <summary>
+        /// Gets or sets whether to show category indicators
+        /// </summary>
+        public bool ShowCategoryIndicators { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether to show priority indicators
+        /// </summary>
+        public bool ShowPriorityIndicators { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the category configurations
+        /// </summary>
+        public Dictionary<NotificationCategory, CategoryConfiguration> CategoryConfigurations { get; set; } =
+            CategoryConfiguration.GetDefaults();
+
+        /// <summary>
+        /// Gets or sets the priority configurations
+        /// </summary>
+        public Dictionary<NotificationPriority, PriorityConfiguration> PriorityConfigurations { get; set; } =
+            PriorityConfiguration.GetDefaults();
+
+        /// <summary>
+        /// Gets or sets whether to enable scroll indicators for overflow
+        /// </summary>
+        public bool EnableScrollIndicators { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the scroll indicator position
+        /// </summary>
+        public ScrollIndicatorPosition ScrollIndicatorPosition { get; set; } = ScrollIndicatorPosition.Right;
+
+        /// <summary>
+        /// Gets or sets whether to enable notification filtering by category
+        /// </summary>
+        public bool EnableCategoryFiltering { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the active category filter (null means show all)
+        /// </summary>
+        public NotificationCategory? ActiveCategoryFilter { get; set; }
+
+        /// <summary>
+        /// Gets or sets the queue processing delay for batch operations
+        /// </summary>
+        public TimeSpan QueueProcessingDelay { get; set; } = TimeSpan.FromMilliseconds(100);
+
+        /// <summary>
+        /// Gets or sets whether to enable animation staggering for multiple notifications
+        /// </summary>
+        public bool EnableAnimationStaggering { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the stagger delay between animations
+        /// </summary>
+        public TimeSpan AnimationStaggerDelay { get; set; } = TimeSpan.FromMilliseconds(50);
+
+        #endregion
+
+        #region Hotkey Action Feedback Configuration
+
+        /// <summary>
+        /// Gets or sets whether to show feedback notifications for hotkey actions
+        /// </summary>
+        public bool EnableHotkeyFeedback { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether to show feedback for no-operation actions (e.g., dismiss all when no notifications exist)
+        /// </summary>
+        public bool ShowHotkeyFeedbackOnNoOp { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the default duration for hotkey action feedback notifications
+        /// </summary>
+        public TimeSpan HotkeyFeedbackDuration { get; set; } = TimeSpan.FromSeconds(2);
+
+        /// <summary>
+        /// Gets or sets the category to use for hotkey action feedback notifications
+        /// </summary>
+        public NotificationCategory HotkeyFeedbackCategory { get; set; } = NotificationCategory.System;
+
+        /// <summary>
+        /// Gets or sets whether to show detailed status information in queue status feedback
+        /// </summary>
+        public bool ShowDetailedQueueStatus { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether to show category breakdown in queue status
+        /// </summary>
+        public bool ShowCategoryBreakdownInStatus { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether to show notification age information in status
+        /// </summary>
+        public bool ShowNotificationAgeInStatus { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the duration for queue status notifications
+        /// </summary>
+        public TimeSpan QueueStatusDisplayDuration { get; set; } = TimeSpan.FromSeconds(8);
+
+        /// <summary>
+        /// Gets or sets whether to enable hotkey action logging for debugging
+        /// </summary>
+        public bool EnableHotkeyActionLogging { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets whether to show success feedback for dismiss actions
+        /// </summary>
+        public bool ShowDismissFeedback { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether to show feedback for system toggle actions
+        /// </summary>
+        public bool ShowSystemToggleFeedback { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether to include affected item count in feedback messages
+        /// </summary>
+        public bool IncludeItemCountInFeedback { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the priority level for hotkey action feedback notifications
+        /// </summary>
+        public NotificationPriority HotkeyFeedbackPriority { get; set; } = NotificationPriority.Low;
 
         #endregion
 
@@ -349,7 +569,51 @@ namespace IntervalToast
                 EnableHoverEffects = EnableHoverEffects,
                 HoverScaleFactor = HoverScaleFactor,
                 EnableRepositionAnimations = EnableRepositionAnimations,
-                RepositionAnimationDuration = RepositionAnimationDuration
+                RepositionAnimationDuration = RepositionAnimationDuration,
+                // Phase 3 properties
+                MaxVisibleNotifications = MaxVisibleNotifications,
+                NotificationSpacing = NotificationSpacing,
+                EnableCompactMode = EnableCompactMode,
+                CompactModeThreshold = CompactModeThreshold,
+                CompactModeScale = CompactModeScale,
+                EnableIntelligentSpacing = EnableIntelligentSpacing,
+                MinimumSpacing = MinimumSpacing,
+                EnableDynamicSizing = EnableDynamicSizing,
+                MinimumHeight = MinimumHeight,
+                EnableSmartPositioning = EnableSmartPositioning,
+                EnablePriorityOrdering = EnablePriorityOrdering,
+                EnableCategoryGrouping = EnableCategoryGrouping,
+                CategoryGroupSpacing = CategoryGroupSpacing,
+                ShowOverflowIndicators = ShowOverflowIndicators,
+                EnableOverflowIndicators = EnableOverflowIndicators,
+                EnableSummaryNotifications = EnableSummaryNotifications,
+                MaxQueueSize = MaxQueueSize,
+                OverflowStrategy = OverflowStrategy,
+                ShowCategoryIndicators = ShowCategoryIndicators,
+                ShowPriorityIndicators = ShowPriorityIndicators,
+                CategoryConfigurations = new Dictionary<NotificationCategory, CategoryConfiguration>(CategoryConfigurations),
+                PriorityConfigurations = new Dictionary<NotificationPriority, PriorityConfiguration>(PriorityConfigurations),
+                EnableScrollIndicators = EnableScrollIndicators,
+                ScrollIndicatorPosition = ScrollIndicatorPosition,
+                EnableCategoryFiltering = EnableCategoryFiltering,
+                ActiveCategoryFilter = ActiveCategoryFilter,
+                QueueProcessingDelay = QueueProcessingDelay,
+                EnableAnimationStaggering = EnableAnimationStaggering,
+                AnimationStaggerDelay = AnimationStaggerDelay,
+                // Hotkey Action Feedback Configuration
+                EnableHotkeyFeedback = EnableHotkeyFeedback,
+                ShowHotkeyFeedbackOnNoOp = ShowHotkeyFeedbackOnNoOp,
+                HotkeyFeedbackDuration = HotkeyFeedbackDuration,
+                HotkeyFeedbackCategory = HotkeyFeedbackCategory,
+                ShowDetailedQueueStatus = ShowDetailedQueueStatus,
+                ShowCategoryBreakdownInStatus = ShowCategoryBreakdownInStatus,
+                ShowNotificationAgeInStatus = ShowNotificationAgeInStatus,
+                QueueStatusDisplayDuration = QueueStatusDisplayDuration,
+                EnableHotkeyActionLogging = EnableHotkeyActionLogging,
+                ShowDismissFeedback = ShowDismissFeedback,
+                ShowSystemToggleFeedback = ShowSystemToggleFeedback,
+                IncludeItemCountInFeedback = IncludeItemCountInFeedback,
+                HotkeyFeedbackPriority = HotkeyFeedbackPriority
             };
         }
 
@@ -534,6 +798,38 @@ namespace IntervalToast
         LeftBorder,
         /// <summary>Right border fill</summary>
         RightBorder
+    }
+
+    /// <summary>
+    /// Overflow handling strategies for when notifications exceed limits
+    /// </summary>
+    public enum OverflowHandling
+    {
+        /// <summary>Queue new notifications until space becomes available</summary>
+        Queue,
+        /// <summary>Replace oldest notifications with new ones</summary>
+        Replace,
+        /// <summary>Drop new notifications when at capacity</summary>
+        Drop,
+        /// <summary>Compress existing notifications to make room</summary>
+        Compress
+    }
+
+    /// <summary>
+    /// Scroll indicator positions for overflow scenarios
+    /// </summary>
+    public enum ScrollIndicatorPosition
+    {
+        /// <summary>No scroll indicators</summary>
+        None,
+        /// <summary>Indicators on the left side</summary>
+        Left,
+        /// <summary>Indicators on the right side</summary>
+        Right,
+        /// <summary>Indicators at the top</summary>
+        Top,
+        /// <summary>Indicators at the bottom</summary>
+        Bottom
     }
 
     #endregion

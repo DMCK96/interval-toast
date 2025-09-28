@@ -43,6 +43,8 @@ namespace IntervalToast
         private bool _isAnimating;
         private Storyboard? _progressStoryboard;
         private bool _isHovered;
+        private NotificationData? _notificationData;
+        private bool _isCompactMode;
 
         /// <summary>
         /// Gets or sets the notification title
@@ -85,6 +87,27 @@ namespace IntervalToast
         /// Event raised when exit animation completes
         /// </summary>
         public event EventHandler? ExitAnimationCompleted;
+
+        /// <summary>
+        /// Gets or sets the notification data
+        /// </summary>
+        public NotificationData? NotificationData
+        {
+            get => _notificationData;
+            set
+            {
+                _notificationData = value;
+                if (value != null)
+                {
+                    ApplyCategoryAndPriorityVisuals(value);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets whether this notification is in compact mode
+        /// </summary>
+        public bool IsCompactMode => _isCompactMode;
 
         #endregion
 
@@ -327,15 +350,14 @@ namespace IntervalToast
         }
 
         /// <summary>
-        /// Updates the position of this notification window with animation
+        /// Updates the position of this notification window (repositioning disabled for simplified system)
         /// </summary>
         /// <param name="newPosition">The new position to animate to</param>
         /// <param name="onCompleted">Optional callback when animation completes</param>
         public void AnimateToPosition(System.Windows.Point newPosition, EventHandler? onCompleted = null)
         {
-            if (_isClosing) return;
-
-            AnimationEngine.AnimateReposition(this, newPosition, _config, onCompleted);
+            // Repositioning disabled in simplified system - no action taken
+            onCompleted?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -590,6 +612,307 @@ namespace IntervalToast
                 // Log the error and return null
                 System.Diagnostics.Debug.WriteLine($"GetProgressElement error: {ex.Message}");
                 return null;
+            }
+        }
+
+        #endregion
+
+        #region Phase 3: Category and Priority Visual Methods
+
+        /// <summary>
+        /// Applies category and priority visual indicators to the notification
+        /// </summary>
+        /// <param name="data">The notification data containing category and priority information</param>
+        private void ApplyCategoryAndPriorityVisuals(NotificationData data)
+        {
+            try
+            {
+                // Apply category visuals
+                ApplyCategoryVisuals(data.Category);
+
+                // Apply priority visuals
+                ApplyPriorityVisuals(data.Priority);
+
+                // Set custom icon if provided
+                if (!string.IsNullOrEmpty(data.IconContent))
+                {
+                    CategoryIconText.Text = data.IconContent;
+                }
+
+                // Apply compact mode if enabled
+                ApplyCompactModeIfNeeded();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error applying category/priority visuals: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Applies category-specific visual styling
+        /// </summary>
+        /// <param name="category">The notification category</param>
+        private void ApplyCategoryVisuals(NotificationCategory category)
+        {
+            try
+            {
+                if (!_config.ShowCategoryIndicators) return;
+
+                // Get category configuration
+                if (_config.CategoryConfigurations.TryGetValue(category, out var categoryConfig))
+                {
+                    // Apply category colors
+                    var backgroundBrush = new SolidColorBrush(categoryConfig.BackgroundColor);
+                    var accentBrush = new SolidColorBrush(categoryConfig.AccentColor);
+
+                    NotificationBorder.Background = backgroundBrush;
+                    IconBorder.Background = accentBrush;
+
+                    // Show category border if configured
+                    if (_config.EnableCategoryGrouping)
+                    {
+                        CategoryBorder.BorderBrush = accentBrush;
+                        CategoryBorder.Visibility = Visibility.Visible;
+                    }
+
+                    // Set category icon
+                    if (!string.IsNullOrEmpty(categoryConfig.IconContent))
+                    {
+                        CategoryIconText.Text = categoryConfig.IconContent;
+                    }
+
+                    // Apply progress indicator colors
+                    ApplyProgressIndicatorColors(accentBrush);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error applying category visuals: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Applies priority-specific visual styling
+        /// </summary>
+        /// <param name="priority">The notification priority</param>
+        private void ApplyPriorityVisuals(NotificationPriority priority)
+        {
+            try
+            {
+                if (!_config.ShowPriorityIndicators) return;
+
+                // Get priority configuration
+                if (_config.PriorityConfigurations.TryGetValue(priority, out var priorityConfig))
+                {
+                    // Show priority indicator badge for high/critical priorities
+                    if (priorityConfig.ShowPriorityIndicator)
+                    {
+                        PriorityIndicator.Visibility = Visibility.Visible;
+
+                        // Set priority indicator color
+                        var priorityBrush = GetPriorityIndicatorBrush(priority);
+                        PriorityIndicator.Background = priorityBrush;
+                    }
+                    else
+                    {
+                        PriorityIndicator.Visibility = Visibility.Collapsed;
+                    }
+
+                    // Apply visual emphasis scaling
+                    if (priorityConfig.VisualEmphasis != 1.0)
+                    {
+                        var scaleTransform = new ScaleTransform(priorityConfig.VisualEmphasis, priorityConfig.VisualEmphasis);
+                        if (RenderTransform is TransformGroup group)
+                        {
+                            group.Children.Add(scaleTransform);
+                        }
+                        else
+                        {
+                            RenderTransform = scaleTransform;
+                        }
+                        RenderTransformOrigin = new System.Windows.Point(0.5, 0.5);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error applying priority visuals: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gets the appropriate brush for priority indicator based on priority level
+        /// </summary>
+        /// <param name="priority">The notification priority</param>
+        /// <returns>The brush for the priority indicator</returns>
+        private SolidColorBrush GetPriorityIndicatorBrush(NotificationPriority priority)
+        {
+            return priority switch
+            {
+                NotificationPriority.Critical => new SolidColorBrush(System.Windows.Media.Color.FromRgb(244, 67, 54)), // Red
+                NotificationPriority.High => new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 193, 7)), // Orange
+                NotificationPriority.Normal => new SolidColorBrush(System.Windows.Media.Color.FromRgb(74, 144, 226)), // Blue
+                NotificationPriority.Low => new SolidColorBrush(System.Windows.Media.Color.FromRgb(158, 158, 158)), // Gray
+                _ => new SolidColorBrush(System.Windows.Media.Color.FromRgb(74, 144, 226))
+            };
+        }
+
+        /// <summary>
+        /// Applies category accent colors to progress indicators
+        /// </summary>
+        /// <param name="accentBrush">The accent color brush</param>
+        private void ApplyProgressIndicatorColors(SolidColorBrush accentBrush)
+        {
+            try
+            {
+                BottomProgressBar.Fill = accentBrush;
+                TopProgressBar.Fill = accentBrush;
+                LeftProgressBorder.Fill = accentBrush;
+                RightProgressBorder.Fill = accentBrush;
+                CircularProgressCorner.Stroke = accentBrush;
+                CircularProgressCenter.Stroke = accentBrush;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error applying progress indicator colors: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Applies compact mode styling if needed
+        /// </summary>
+        private void ApplyCompactModeIfNeeded()
+        {
+            try
+            {
+                var notificationCount = _config.MaxVisibleNotifications; // This would ideally come from the manager
+                _isCompactMode = _config.EnableCompactMode && notificationCount >= _config.CompactModeThreshold;
+
+                if (_isCompactMode)
+                {
+                    // Apply compact mode styling
+                    var scale = _config.CompactModeScale;
+
+                    // Reduce font sizes
+                    TitleTextBlock.FontSize *= scale;
+                    MessageTextBlock.FontSize *= scale;
+                    TimestampTextBlock.FontSize *= scale;
+
+                    // Reduce icon size
+                    IconBorder.Width *= scale;
+                    IconBorder.Height *= scale;
+                    CategoryIconText.FontSize *= scale;
+
+                    // Reduce spacing
+                    MainContentGrid.Margin = new Thickness(
+                        MainContentGrid.Margin.Left * scale,
+                        MainContentGrid.Margin.Top * scale,
+                        MainContentGrid.Margin.Right * scale,
+                        MainContentGrid.Margin.Bottom * scale);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error applying compact mode: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Shows overflow indicators for queue management
+        /// </summary>
+        /// <param name="overflowCount">Number of notifications in overflow</param>
+        /// <param name="scrollPosition">The scroll indicator position</param>
+        public void ShowOverflowIndicators(int overflowCount, ScrollIndicatorPosition scrollPosition = ScrollIndicatorPosition.Right)
+        {
+            try
+            {
+                if (!_config.ShowOverflowIndicators || overflowCount <= 0)
+                {
+                    OverflowIndicators.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                OverflowIndicators.Visibility = Visibility.Visible;
+
+                // Show overflow count badge
+                OverflowBadge.Visibility = Visibility.Visible;
+                OverflowCountText.Text = $"+{overflowCount}";
+
+                // Show appropriate scroll indicators
+                HideAllScrollIndicators();
+
+                switch (scrollPosition)
+                {
+                    case ScrollIndicatorPosition.Top:
+                        TopScrollIndicator.Visibility = Visibility.Visible;
+                        break;
+                    case ScrollIndicatorPosition.Bottom:
+                        BottomScrollIndicator.Visibility = Visibility.Visible;
+                        break;
+                    case ScrollIndicatorPosition.Left:
+                        LeftScrollIndicator.Visibility = Visibility.Visible;
+                        break;
+                    case ScrollIndicatorPosition.Right:
+                        RightScrollIndicator.Visibility = Visibility.Visible;
+                        break;
+                    case ScrollIndicatorPosition.None:
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error showing overflow indicators: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Hides all overflow indicators
+        /// </summary>
+        public void HideOverflowIndicators()
+        {
+            try
+            {
+                OverflowIndicators.Visibility = Visibility.Collapsed;
+                HideAllScrollIndicators();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error hiding overflow indicators: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Hides all scroll indicators
+        /// </summary>
+        private void HideAllScrollIndicators()
+        {
+            TopScrollIndicator.Visibility = Visibility.Collapsed;
+            BottomScrollIndicator.Visibility = Visibility.Collapsed;
+            LeftScrollIndicator.Visibility = Visibility.Collapsed;
+            RightScrollIndicator.Visibility = Visibility.Collapsed;
+            OverflowBadge.Visibility = Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// Enhanced show notification method with category and priority support
+        /// </summary>
+        /// <param name="notificationData">The complete notification data</param>
+        public void ShowNotification(NotificationData notificationData)
+        {
+            try
+            {
+                NotificationData = notificationData;
+                NotificationTitle = notificationData.Title;
+                NotificationMessage = notificationData.Message;
+                Timestamp = notificationData.CreatedAt.ToString("HH:mm");
+
+                Show();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error showing notification with data: {ex.Message}");
+                // Fallback to basic display
+                ShowNotification(notificationData.Title, notificationData.Message);
             }
         }
 

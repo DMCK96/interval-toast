@@ -8,8 +8,8 @@ using System.Windows.Forms;
 namespace IntervalToast
 {
     /// <summary>
-    /// Manages window positioning for notification windows, handling multi-monitor scenarios
-    /// and calculating proper screen working areas accounting for taskbars and other UI elements.
+    /// Window positioning manager supporting vertical stacking of multiple notifications.
+    /// Handles screen positioning, vertical stacking, and repositioning animations.
     /// </summary>
     public class WindowPositionManager
     {
@@ -29,20 +29,24 @@ namespace IntervalToast
 
         #region Fields
 
-        private static readonly List<NotificationWindow> _activeNotifications = new();
-        private const double NotificationSpacing = 10.0;
+        private const double DefaultNotificationSpacing = 10.0;
+        private const double UniformNotificationWidth = 350.0;
+        private const double UniformNotificationHeight = 120.0;
 
         #endregion
 
         #region Public Methods
 
         /// <summary>
-        /// Calculates the position for a notification window based on the specified position preference
+        /// Calculates the position for a notification window with vertical stacking support.
+        /// Always uses uniform sizing and proper vertical positioning based on stack index.
         /// </summary>
         /// <param name="notificationWindow">The notification window to position</param>
         /// <param name="position">The desired position</param>
+        /// <param name="stackIndex">The index in the vertical stack (0 = topmost/newest)</param>
+        /// <param name="configuration">Optional configuration (size settings ignored for uniformity)</param>
         /// <returns>The calculated point for the window</returns>
-        public System.Windows.Point CalculatePosition(NotificationWindow notificationWindow, NotificationPosition position)
+        public System.Windows.Point CalculatePosition(NotificationWindow notificationWindow, NotificationPosition position, int stackIndex = 0, NotificationConfiguration? configuration = null)
         {
             var screen = GetTargetScreen();
             var workingArea = screen.WorkingArea;
@@ -54,59 +58,54 @@ namespace IntervalToast
                 workingArea.Width,
                 workingArea.Height);
 
-            // Get window dimensions
-            var windowWidth = notificationWindow.Width;
-            var windowHeight = notificationWindow.Height;
+            // Apply uniform sizing to ensure consistency
+            notificationWindow.Width = UniformNotificationWidth;
+            notificationWindow.Height = UniformNotificationHeight;
 
-            // Calculate base position
-            var basePosition = CalculateBasePosition(workingAreaRect, windowWidth, windowHeight, position);
+            // Calculate base position for the stack
+            var basePosition = CalculateBasePosition(workingAreaRect, UniformNotificationWidth, UniformNotificationHeight, position);
 
-            // Adjust for existing notifications
-            var adjustedPosition = AdjustForExistingNotifications(basePosition, windowHeight, position, workingAreaRect);
+            // Apply vertical stacking offset
+            var finalPosition = CalculateStackedPosition(basePosition, stackIndex, position, configuration);
 
-            // Register this notification
-            RegisterNotification(notificationWindow);
-
-            return adjustedPosition;
+            return finalPosition;
         }
 
         /// <summary>
-        /// Removes a notification from the active list and repositions remaining notifications
+        /// Legacy method for backward compatibility - single notification positioning
         /// </summary>
-        /// <param name="notificationWindow">The notification window being closed</param>
-        public void UnregisterNotification(NotificationWindow notificationWindow)
+        public System.Windows.Point CalculatePosition(NotificationWindow notificationWindow, NotificationPosition position)
         {
-            if (_activeNotifications.Remove(notificationWindow))
+            return CalculatePosition(notificationWindow, position, 0, null);
+        }
+
+        /// <summary>
+        /// Calculates positions for multiple notifications in a vertical stack
+        /// </summary>
+        /// <param name="notificationCount">Number of notifications to position</param>
+        /// <param name="position">The desired position anchor</param>
+        /// <param name="configuration">Optional configuration</param>
+        /// <returns>Array of calculated positions for each notification</returns>
+        public System.Windows.Point[] CalculateStackPositions(int notificationCount, NotificationPosition position, NotificationConfiguration? configuration = null)
+        {
+            var positions = new System.Windows.Point[notificationCount];
+            var screen = GetTargetScreen();
+            var workingArea = screen.WorkingArea;
+
+            var workingAreaRect = new Rect(
+                workingArea.X,
+                workingArea.Y,
+                workingArea.Width,
+                workingArea.Height);
+
+            var basePosition = CalculateBasePosition(workingAreaRect, UniformNotificationWidth, UniformNotificationHeight, position);
+
+            for (int i = 0; i < notificationCount; i++)
             {
-                // Only reposition if we actually removed a notification
-                RepositionExistingNotifications();
+                positions[i] = CalculateStackedPosition(basePosition, i, position, configuration);
             }
-        }
 
-        /// <summary>
-        /// Gets the current number of active notifications
-        /// </summary>
-        /// <returns>The count of active notifications</returns>
-        public int GetActiveNotificationCount()
-        {
-            return _activeNotifications.Count;
-        }
-
-        /// <summary>
-        /// Gets all active notifications (read-only)
-        /// </summary>
-        /// <returns>A read-only list of active notifications</returns>
-        public IReadOnlyList<NotificationWindow> GetActiveNotifications()
-        {
-            return _activeNotifications.AsReadOnly();
-        }
-
-        /// <summary>
-        /// Clears all active notifications without repositioning
-        /// </summary>
-        public void ClearAllNotifications()
-        {
-            _activeNotifications.Clear();
+            return positions;
         }
 
         /// <summary>
@@ -148,196 +147,139 @@ namespace IntervalToast
             return position switch
             {
                 NotificationPosition.TopRight => new System.Windows.Point(
-                    workingArea.Right - windowWidth - NotificationSpacing,
-                    workingArea.Top + NotificationSpacing),
+                    workingArea.Right - windowWidth - DefaultNotificationSpacing,
+                    workingArea.Top + DefaultNotificationSpacing),
 
                 NotificationPosition.TopLeft => new System.Windows.Point(
-                    workingArea.Left + NotificationSpacing,
-                    workingArea.Top + NotificationSpacing),
+                    workingArea.Left + DefaultNotificationSpacing,
+                    workingArea.Top + DefaultNotificationSpacing),
 
                 NotificationPosition.BottomRight => new System.Windows.Point(
-                    workingArea.Right - windowWidth - NotificationSpacing,
-                    workingArea.Bottom - windowHeight - NotificationSpacing),
+                    workingArea.Right - windowWidth - DefaultNotificationSpacing,
+                    workingArea.Bottom - windowHeight - DefaultNotificationSpacing),
 
                 NotificationPosition.BottomLeft => new System.Windows.Point(
-                    workingArea.Left + NotificationSpacing,
-                    workingArea.Bottom - windowHeight - NotificationSpacing),
+                    workingArea.Left + DefaultNotificationSpacing,
+                    workingArea.Bottom - windowHeight - DefaultNotificationSpacing),
 
                 NotificationPosition.TopCenter => new System.Windows.Point(
                     workingArea.Left + (workingArea.Width - windowWidth) / 2,
-                    workingArea.Top + NotificationSpacing),
+                    workingArea.Top + DefaultNotificationSpacing),
 
                 NotificationPosition.BottomCenter => new System.Windows.Point(
                     workingArea.Left + (workingArea.Width - windowWidth) / 2,
-                    workingArea.Bottom - windowHeight - NotificationSpacing),
+                    workingArea.Bottom - windowHeight - DefaultNotificationSpacing),
 
                 _ => new System.Windows.Point(
-                    workingArea.Right - windowWidth - NotificationSpacing,
-                    workingArea.Bottom - windowHeight - NotificationSpacing)
+                    workingArea.Right - windowWidth - DefaultNotificationSpacing,
+                    workingArea.Bottom - windowHeight - DefaultNotificationSpacing)
+            };
+        }
+
+
+
+
+
+        /// <summary>
+        /// Calculates the actual position for a notification in a vertical stack
+        /// </summary>
+        /// <param name="basePosition">The base position for the stack</param>
+        /// <param name="stackIndex">The index in the stack (0 = anchor position)</param>
+        /// <param name="position">The notification position type</param>
+        /// <param name="configuration">Optional configuration</param>
+        /// <returns>The final calculated position</returns>
+        private System.Windows.Point CalculateStackedPosition(System.Windows.Point basePosition, int stackIndex, NotificationPosition position, NotificationConfiguration? configuration)
+        {
+            var spacing = configuration?.NotificationSpacing ?? DefaultNotificationSpacing;
+            var notificationHeight = UniformNotificationHeight;
+            var totalOffset = stackIndex * (notificationHeight + spacing);
+
+            // Determine stacking direction based on position
+            return position switch
+            {
+                NotificationPosition.TopRight or NotificationPosition.TopLeft or NotificationPosition.TopCenter =>
+                    new System.Windows.Point(basePosition.X, basePosition.Y + totalOffset),
+
+                NotificationPosition.BottomRight or NotificationPosition.BottomLeft or NotificationPosition.BottomCenter =>
+                    new System.Windows.Point(basePosition.X, basePosition.Y - totalOffset),
+
+                _ => new System.Windows.Point(basePosition.X, basePosition.Y - totalOffset)
             };
         }
 
         /// <summary>
-        /// Adjusts the position to account for existing notifications
+        /// Calculates the positions for repositioning existing notifications after one is removed
         /// </summary>
-        private System.Windows.Point AdjustForExistingNotifications(System.Windows.Point basePosition, double windowHeight,
-            NotificationPosition position, Rect workingArea)
+        /// <param name="currentPositions">Current positions of all notifications</param>
+        /// <param name="removedIndex">Index of the removed notification</param>
+        /// <param name="position">The notification position type</param>
+        /// <param name="configuration">Optional configuration</param>
+        /// <returns>New positions for remaining notifications</returns>
+        public System.Windows.Point[] CalculateRepositionedPositions(System.Windows.Point[] currentPositions, int removedIndex, NotificationPosition position, NotificationConfiguration? configuration = null)
         {
-            if (_activeNotifications.Count == 0)
-                return basePosition;
+            if (currentPositions == null || currentPositions.Length == 0)
+                return Array.Empty<System.Windows.Point>();
 
-            var adjustedPosition = basePosition;
-            var stackOffset = (_activeNotifications.Count * (windowHeight + NotificationSpacing));
+            var newPositions = new List<System.Windows.Point>();
+            var spacing = configuration?.NotificationSpacing ?? DefaultNotificationSpacing;
+            var notificationHeight = UniformNotificationHeight;
 
-            switch (position)
+            // Recalculate positions for remaining notifications
+            for (int i = 0; i < currentPositions.Length; i++)
             {
-                case NotificationPosition.TopRight:
-                case NotificationPosition.TopLeft:
-                case NotificationPosition.TopCenter:
-                    // Stack downward from top positions
-                    adjustedPosition.Y += stackOffset;
+                if (i == removedIndex) continue; // Skip the removed notification
 
-                    // Ensure we don't go below the working area
-                    if (adjustedPosition.Y + windowHeight > workingArea.Bottom)
-                    {
-                        adjustedPosition.Y = workingArea.Bottom - windowHeight - NotificationSpacing;
-                    }
-                    break;
+                // Calculate new stack index (shift down notifications that were above the removed one)
+                var newStackIndex = i > removedIndex ? i - 1 : i;
+                var currentPos = currentPositions[i];
 
-                case NotificationPosition.BottomRight:
-                case NotificationPosition.BottomLeft:
-                case NotificationPosition.BottomCenter:
-                    // Stack upward from bottom positions
-                    adjustedPosition.Y -= stackOffset;
+                // For top positions, move notifications up; for bottom positions, move them down
+                var moveDistance = notificationHeight + spacing;
 
-                    // Ensure we don't go above the working area
-                    if (adjustedPosition.Y < workingArea.Top)
-                    {
-                        adjustedPosition.Y = workingArea.Top + NotificationSpacing;
-                    }
-                    break;
+                System.Windows.Point newPosition = position switch
+                {
+                    NotificationPosition.TopRight or NotificationPosition.TopLeft or NotificationPosition.TopCenter =>
+                        i > removedIndex ? new System.Windows.Point(currentPos.X, currentPos.Y - moveDistance) : currentPos,
+
+                    NotificationPosition.BottomRight or NotificationPosition.BottomLeft or NotificationPosition.BottomCenter =>
+                        i > removedIndex ? new System.Windows.Point(currentPos.X, currentPos.Y + moveDistance) : currentPos,
+
+                    _ => i > removedIndex ? new System.Windows.Point(currentPos.X, currentPos.Y + moveDistance) : currentPos
+                };
+
+                newPositions.Add(newPosition);
             }
 
-            return adjustedPosition;
+            return newPositions.ToArray();
         }
 
         /// <summary>
-        /// Registers a notification window
+        /// Validates that the given stack positions fit within the screen bounds
         /// </summary>
-        private void RegisterNotification(NotificationWindow notificationWindow)
+        /// <param name="positions">The positions to validate</param>
+        /// <param name="position">The notification position type</param>
+        /// <returns>True if all positions fit on screen</returns>
+        public bool ValidateStackPositions(System.Windows.Point[] positions, NotificationPosition position)
         {
-            _activeNotifications.Add(notificationWindow);
+            if (positions == null || positions.Length == 0)
+                return true;
 
-            // Subscribe to the notification closed event
-            notificationWindow.NotificationClosed += (sender, e) =>
-            {
-                if (sender is NotificationWindow window)
-                {
-                    UnregisterNotification(window);
-                }
-            };
-        }
-
-        /// <summary>
-        /// Repositions existing notifications when one is closed with smooth animations
-        /// </summary>
-        private void RepositionExistingNotifications()
-        {
-            if (_activeNotifications.Count == 0)
-                return;
-
-            // Get the screen and working area
             var screen = GetTargetScreen();
             var workingArea = screen.WorkingArea;
-            var workingAreaRect = new Rect(
-                workingArea.X,
-                workingArea.Y,
-                workingArea.Width,
-                workingArea.Height);
 
-            // Reposition each notification with animation
-            for (int i = 0; i < _activeNotifications.Count; i++)
+            foreach (var pos in positions)
             {
-                var notification = _activeNotifications[i];
-
-                // Calculate new position based on index
-                var basePosition = CalculateBasePosition(
-                    workingAreaRect,
-                    notification.Width,
-                    notification.Height,
-                    NotificationPosition.BottomRight); // Default position
-
-                var stackOffset = i * (notification.Height + NotificationSpacing);
-                var newPosition = new System.Windows.Point(basePosition.X, basePosition.Y - stackOffset);
-
-                // Animate to new position using the notification's AnimateToPosition method
-                notification.AnimateToPosition(newPosition);
-            }
-        }
-
-        /// <summary>
-        /// Repositions all notifications to their correct stacked positions with animations
-        /// </summary>
-        /// <param name="position">The base position for stacking</param>
-        /// <param name="workingArea">The screen working area</param>
-        public void RepositionAllNotifications(NotificationPosition position, Rect workingArea)
-        {
-            if (_activeNotifications.Count == 0)
-                return;
-
-            for (int i = 0; i < _activeNotifications.Count; i++)
-            {
-                var notification = _activeNotifications[i];
-                var basePosition = CalculateBasePosition(
-                    workingArea,
-                    notification.Width,
-                    notification.Height,
-                    position);
-
-                var adjustedPosition = AdjustPositionForIndex(basePosition, i, notification.Height, position, workingArea);
-                notification.AnimateToPosition(adjustedPosition);
-            }
-        }
-
-        /// <summary>
-        /// Adjusts position for a specific index in the stack
-        /// </summary>
-        private System.Windows.Point AdjustPositionForIndex(System.Windows.Point basePosition, int index, double windowHeight,
-            NotificationPosition position, Rect workingArea)
-        {
-            var adjustedPosition = basePosition;
-            var stackOffset = index * (windowHeight + NotificationSpacing);
-
-            switch (position)
-            {
-                case NotificationPosition.TopRight:
-                case NotificationPosition.TopLeft:
-                case NotificationPosition.TopCenter:
-                    // Stack downward from top positions
-                    adjustedPosition.Y += stackOffset;
-
-                    // Ensure we don't go below the working area
-                    if (adjustedPosition.Y + windowHeight > workingArea.Bottom)
-                    {
-                        adjustedPosition.Y = workingArea.Bottom - windowHeight - NotificationSpacing;
-                    }
-                    break;
-
-                case NotificationPosition.BottomRight:
-                case NotificationPosition.BottomLeft:
-                case NotificationPosition.BottomCenter:
-                    // Stack upward from bottom positions
-                    adjustedPosition.Y -= stackOffset;
-
-                    // Ensure we don't go above the working area
-                    if (adjustedPosition.Y < workingArea.Top)
-                    {
-                        adjustedPosition.Y = workingArea.Top + NotificationSpacing;
-                    }
-                    break;
+                // Check if notification would be outside screen bounds
+                if (pos.X < workingArea.Left ||
+                    pos.X + UniformNotificationWidth > workingArea.Right ||
+                    pos.Y < workingArea.Top ||
+                    pos.Y + UniformNotificationHeight > workingArea.Bottom)
+                {
+                    return false;
+                }
             }
 
-            return adjustedPosition;
+            return true;
         }
 
         #endregion

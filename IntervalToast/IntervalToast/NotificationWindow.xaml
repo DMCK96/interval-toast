@@ -6,6 +6,8 @@
         mc:Ignorable="d"
         Title="IntervalToast Notification"
         Height="120" Width="350"
+        MinHeight="120" MaxHeight="120"
+        MinWidth="350" MaxWidth="350"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -174,6 +176,61 @@
                      Opacity="0.7"
                      Visibility="Collapsed"/>
 
+            <!-- Overflow and scroll indicators -->
+            <Grid x:Name="OverflowIndicators" Visibility="Collapsed">
+                <!-- Top scroll indicator -->
+                <Rectangle x:Name="TopScrollIndicator"
+                           Fill="#4A90E2"
+                           Height="2"
+                           HorizontalAlignment="Stretch"
+                           VerticalAlignment="Top"
+                           Opacity="0.7"
+                           Visibility="Collapsed"/>
+
+                <!-- Bottom scroll indicator -->
+                <Rectangle x:Name="BottomScrollIndicator"
+                           Fill="#4A90E2"
+                           Height="2"
+                           HorizontalAlignment="Stretch"
+                           VerticalAlignment="Bottom"
+                           Opacity="0.7"
+                           Visibility="Collapsed"/>
+
+                <!-- Left scroll indicator -->
+                <Rectangle x:Name="LeftScrollIndicator"
+                           Fill="#4A90E2"
+                           Width="2"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Stretch"
+                           Opacity="0.7"
+                           Visibility="Collapsed"/>
+
+                <!-- Right scroll indicator -->
+                <Rectangle x:Name="RightScrollIndicator"
+                           Fill="#4A90E2"
+                           Width="2"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Stretch"
+                           Opacity="0.7"
+                           Visibility="Collapsed"/>
+
+                <!-- Overflow count badge -->
+                <Border x:Name="OverflowBadge"
+                        Background="Orange"
+                        CornerRadius="8"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,8,8"
+                        Padding="6,2"
+                        Visibility="Collapsed">
+                    <TextBlock x:Name="OverflowCountText"
+                               Text="+5"
+                               Foreground="White"
+                               FontSize="10"
+                               FontWeight="Bold"/>
+                </Border>
+            </Grid>
+
             <!-- Main content grid -->
             <Grid x:Name="MainContentGrid">
                 <Grid.RowDefinitions>
@@ -213,21 +270,41 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Icon area -->
-                <Border x:Name="IconBorder"
-                        Grid.Column="0"
-                        Width="24"
-                        Height="24"
-                        CornerRadius="12"
-                        Background="#4A90E2"
-                        VerticalAlignment="Top"
-                        Margin="0,4,12,0">
-                    <TextBlock Text="⏰"
-                               Foreground="White"
-                               FontSize="12"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"/>
-                </Border>
+                <!-- Icon area with category indicator -->
+                <Grid Grid.Column="0" VerticalAlignment="Top" Margin="0,4,12,0">
+                    <Border x:Name="IconBorder"
+                            Width="24"
+                            Height="24"
+                            CornerRadius="12"
+                            Background="#4A90E2">
+                        <TextBlock x:Name="CategoryIconText"
+                                   Text="⏰"
+                                   Foreground="White"
+                                   FontSize="12"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+
+                    <!-- Priority indicator badge -->
+                    <Border x:Name="PriorityIndicator"
+                            Width="8"
+                            Height="8"
+                            CornerRadius="4"
+                            Background="Red"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="0,-2,-2,0"
+                            Visibility="Collapsed"/>
+
+                    <!-- Category border indicator -->
+                    <Border x:Name="CategoryBorder"
+                            Width="26"
+                            Height="26"
+                            CornerRadius="13"
+                            BorderThickness="2"
+                            BorderBrush="#4A90E2"
+                            Visibility="Collapsed"/>
+                </Grid>
 
                 <!-- Message content -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
