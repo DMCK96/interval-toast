@@ -1,4 +1,5 @@
 using IntervalToast.Presentation.ViewModels;
+using System;
 using System.Windows;
 
 namespace IntervalToast.Presentation.Windows;

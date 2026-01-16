@@ -28,6 +28,9 @@ public partial class App : System.Windows.Application
     {
         try
         {
+            // Setup global exception handling first
+            SetupExceptionHandling();
+
             // Create and configure the host
             var host = CreateHost(e.Args);
             _applicationHost = new ApplicationHost(host);
@@ -88,9 +91,6 @@ public partial class App : System.Windows.Application
                 // Add application services
                 services.AddIntervalToastServices();
                 services.AddPresentationServices();
-
-                // Register main window
-                services.AddTransient<MainWindow>();
 
                 // Add hosted services for background tasks
                 services.AddHostedService<NotificationSchedulerService>();

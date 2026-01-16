@@ -9,8 +9,7 @@
         Title="IntervalToast Configuration"
         Height="600" Width="900"
         MinHeight="500" MinWidth="700"
-        WindowStartupLocation="CenterScreen"
-        Icon="pack://application:,,,/Assets/icon.ico">
+        WindowStartupLocation="CenterScreen">
 
 
     <Window.Resources>

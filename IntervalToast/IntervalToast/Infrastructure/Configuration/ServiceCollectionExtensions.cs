@@ -52,6 +52,9 @@ public static class ServiceCollectionExtensions
         // Register view models
         services.AddTransient<Presentation.ViewModels.MainWindowViewModel>();
 
+        // Register windows
+        services.AddTransient<Presentation.Windows.MainWindow>();
+
         // Register other presentation services as needed
         // services.AddTransient<IDialogService, DialogService>();
         // services.AddTransient<ISystemTrayService, SystemTrayService>();

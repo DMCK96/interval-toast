@@ -1,4 +1,5 @@
 using IntervalToast.Application.Interfaces;
+using IntervalToast.Application.Models;
 using IntervalToast.Domain.Entities;
 using IntervalToast.Domain.Enums;
 using IntervalToast.Domain.Interfaces;

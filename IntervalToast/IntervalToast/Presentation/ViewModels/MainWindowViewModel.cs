@@ -54,10 +54,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         // _hotkeyService = hotkeyService ?? throw new ArgumentNullException(nameof(hotkeyService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        // Subscribe to events
-        _notificationService.NotificationDisplayed += OnNotificationDisplayed;
-        _notificationService.NotificationDismissed += OnNotificationDismissed;
-        _settingsService.SettingsUpdated += OnSettingsUpdated;
+        // Subscribe to events - temporarily commented out until events are implemented
+        // _notificationService.NotificationDisplayed += OnNotificationDisplayed;
+        // _notificationService.NotificationDismissed += OnNotificationDismissed;
+        // _settingsService.SettingsUpdated += OnSettingsUpdated;
         // _hotkeyService.HotkeyPressed += OnHotkeyPressed; // Commented out until implementation is ready
 
         // Initialize

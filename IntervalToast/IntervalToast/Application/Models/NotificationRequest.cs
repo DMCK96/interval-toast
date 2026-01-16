@@ -1,3 +1,4 @@
+using IntervalToast.Domain.Entities;
 using IntervalToast.Domain.Enums;
 using IntervalToast.Domain.ValueObjects;
 
@@ -107,5 +108,83 @@ public sealed record NotificationRequest
             Category = NotificationCategory.Error,
             Priority = NotificationPriority.Critical
         };
+    }
+}
+
+/// <summary>
+/// Represents the status of the notification queue
+/// </summary>
+public sealed class NotificationQueueStatus
+{
+    /// <summary>
+    /// Number of currently active (displayed) notifications
+    /// </summary>
+    public int ActiveCount { get; set; }
+
+    /// <summary>
+    /// Number of pending (not yet displayed) notifications
+    /// </summary>
+    public int PendingCount { get; set; }
+
+    /// <summary>
+    /// Total number of notifications in the system
+    /// </summary>
+    public int TotalCount { get; set; }
+
+    /// <summary>
+    /// Whether the notification system is enabled
+    /// </summary>
+    public bool IsSystemEnabled { get; set; }
+
+    /// <summary>
+    /// Last time there was notification activity
+    /// </summary>
+    public DateTimeOffset LastActivity { get; set; }
+}
+
+/// <summary>
+/// Event arguments for notification displayed events
+/// </summary>
+public sealed class NotificationDisplayedEventArgs : EventArgs
+{
+    public Notification Notification { get; }
+    public DateTimeOffset DisplayedAt { get; }
+
+    public NotificationDisplayedEventArgs(Notification notification, DateTimeOffset displayedAt)
+    {
+        Notification = notification ?? throw new ArgumentNullException(nameof(notification));
+        DisplayedAt = displayedAt;
+    }
+}
+
+/// <summary>
+/// Event arguments for notification dismissed events
+/// </summary>
+public sealed class NotificationDismissedEventArgs : EventArgs
+{
+    public Notification Notification { get; }
+    public DateTimeOffset DismissedAt { get; }
+    public bool UserDismissed { get; }
+
+    public NotificationDismissedEventArgs(Notification notification, DateTimeOffset dismissedAt, bool userDismissed)
+    {
+        Notification = notification ?? throw new ArgumentNullException(nameof(notification));
+        DismissedAt = dismissedAt;
+        UserDismissed = userDismissed;
+    }
+}
+
+/// <summary>
+/// Event arguments for settings updated events
+/// </summary>
+public sealed class SettingsUpdatedEventArgs : EventArgs
+{
+    public ApplicationSettings Settings { get; }
+    public DateTimeOffset UpdatedAt { get; }
+
+    public SettingsUpdatedEventArgs(ApplicationSettings settings, DateTimeOffset updatedAt)
+    {
+        Settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        UpdatedAt = updatedAt;
     }
 }
